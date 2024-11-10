@@ -39,7 +39,7 @@ df=read.table("data/student-por.csv",sep=",",header=TRUE)
 # Convertir columnas necesarias a factor
 cols_to_factor <- c("school", "sex", "address", "famsize", "Pstatus", "Medu", "Fedu", "Mjob", 
                     "Fjob", "reason", "guardian", "traveltime", "studytime" ,"famrel"
-                    , "freetime", "goout", "Dalc", "Walc", "health")
+                    , "freetime", "goout", "health")
 
 df[cols_to_factor] <- lapply(df[cols_to_factor], as.factor)
 
@@ -47,10 +47,11 @@ cols_to_boolean <- c("schoolsup", "famsup", "paid", "activities", "nursery", "hi
 
 df[cols_to_boolean] <- lapply(df[cols_to_boolean], function(x) x == "yes")
 
+df_long <- tidyr::pivot_longer(df, cols = c("Dalc", "Walc"), names_to = "period", values_to = "consumption")
 
-print(nrow(df)) # 1044 students
+print(nrow(df)) # 649 students
 print(head(df))
-print(str(df))
+print(head(df_long))
 ```
 
 ## Visualización
@@ -60,26 +61,19 @@ library(ggplot2)
 ```
 
 ```{r}	
-# Histograma de consumo de alcohol entre semana
-ggplot(df, aes(x = Dalc)) +
-  geom_histogram(binwidth = 1, fill = "blue", color = "black") +
-  labs(title = "Histograma de consumo de alcohol en fin de semana",
+# Histograma de consumo de alcohol entre semana vs fin de semana
+ggplot() +
+  geom_histogram(data = df_long, aes(x = consumption, fill = period), position = position_dodge(), stat = "count", alpha = 0.5, bins = 10) +
+  labs(title = "Histograma de consumo de alcohol entre semana y fin de semana",
        x = "Consumo de alcohol",
-       y = "Frecuencia")
-
-```
-```{r}	
-# Histograma de consumo de alcohol en fin de semana
-ggplot(df, aes(x = Walc)) +
-  geom_histogram(binwidth = 1, fill = "blue", color = "black") +
-  labs(title = "Histograma de consumo de alcohol en fin de semana",
-       x = "Consumo de alcohol",
-       y = "Frecuencia")
+       y = "Cantidad de instancias",
+       fill = "Periodo") +
+  theme_minimal()
 ```
 ```{r}
 # Gráfico de dispersión de consumo de alcohol entre semana y en fin de semana
 ggplot(df, aes(x = Dalc, y = Walc)) +
-  geom_count(aes(color = ..n.., size = ..n..)) +
+  geom_count(aes(color = after_stat(n), size = after_stat(n))) +
   scale_size_area(max_size = 10) +
   scale_color_gradient(low = "blue", high = "red") +
   labs(title = "Consumo de alcohol entre semana y fin de semana",
@@ -103,15 +97,43 @@ ggplot(df_count, aes(x = "", y = prop, fill = interaction(Dalc, Walc))) +
   labs(title = "Distribución conjunta del consumo de alcohol entre semana y en fin de semana",
        x = NULL, y = NULL) +
   theme_void()  
+```
+
+```{r}
+# Media de consumo según la nota final
+df %>%
+  filter(!is.na(G3) & !is.na(Dalc) & !is.na(Walc)) %>%
+  group_by(G3) %>%
+  summarise(mean_Dalc = mean(Dalc, na.rm = TRUE), 
+            mean_Walc = mean(Walc, na.rm = TRUE), 
+            count = n()) %>%
+  ggplot(aes(x = G3)) +
+  geom_point(aes(y = mean_Dalc, color = "Dalc", size = count)) +
+  geom_line(aes(y = mean_Dalc, color = "Dalc")) +
+  geom_point(aes(y = mean_Walc, color = "Walc", size = count)) +
+  geom_line(aes(y = mean_Walc, color = "Walc")) +
+  labs(title = "Media de consumo de alcohol según la nota final",
+       x = "Nota final",
+       y = "Media de consumo de alcohol",
+       color = "Tipo de consumo",
+       size = "Tamaño del grupo") +
+  theme_minimal()
 
 ```
 
 ```{r}
-library(ggplot2)
-ggplot(df, aes(x=Medu, y=Walc)) +
-  geom_boxplot() +
-  labs(x = "Mother's Education Level", y = "Weekend Alcohol Consumption", title = "Relationship Between Mother's Education and Children's Drinking")
-
-
+# Porcentaje de personas perteneciente a cada grupo de consumo según el sexo para Dalc y Walk
+df_long %>%
+  group_by(sex, period, consumption) %>%
+  summarise(count = n()) %>%
+  group_by(sex, period) %>%
+  mutate(percentage = count / sum(count) * 100) %>%
+  ggplot(aes(x = factor(consumption), y = percentage, fill = sex)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  facet_wrap(~period) +
+  labs(title = "Porcentaje de personas perteneciente a cada grupo de consumo según el sexo",
+       x = "Consumo de alcohol",
+       y = "Porcentaje",
+       fill = "Sexo") +
+  theme_minimal()
 ```
-

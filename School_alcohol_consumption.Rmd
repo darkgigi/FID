@@ -37,11 +37,16 @@ library(dplyr)
 df=read.table("data/student-por.csv",sep=",",header=TRUE)
 
 # Convertir columnas necesarias a factor
-cols_to_factor <- c("school", "sex", "address", "famsize", "Pstatus", "Mjob", 
-                    "Fjob", "reason", "guardian", "schoolsup", "famsup", "paid", 
-                    "activities", "nursery", "higher", "internet", "romantic", "subject")
+cols_to_factor <- c("school", "sex", "address", "famsize", "Pstatus", "Medu", "Fedu", "Mjob", 
+                    "Fjob", "reason", "guardian", "traveltime", "studytime" ,"famrel"
+                    , "freetime", "goout", "Dalc", "Walc", "health")
 
 df[cols_to_factor] <- lapply(df[cols_to_factor], as.factor)
+
+cols_to_boolean <- c("schoolsup", "famsup", "paid", "activities", "nursery", "higher", "internet", "romantic")
+
+df[cols_to_boolean] <- lapply(df[cols_to_boolean], function(x) x == "yes")
+
 
 print(nrow(df)) # 1044 students
 print(head(df))

@@ -51,7 +51,9 @@ print(str(df))
 ## Visualización
 ```{r}
 install.packages("ggplot2")
+install.packages("tidyverse")
 library(ggplot2)
+library(tidyr)
 ```
 
 ```{r}	
@@ -102,11 +104,32 @@ ggplot(df_count, aes(x = "", y = prop, fill = interaction(Dalc, Walc))) +
 ```
 
 ```{r}
-library(ggplot2)
-ggplot(df, aes(x=Medu, y=Walc)) +
-  geom_boxplot() +
-  labs(x = "Mother's Education Level", y = "Weekend Alcohol Consumption", title = "Relationship Between Mother's Education and Children's Drinking")
+# Gráfico de media de consumo de alcohol según si los padres están separados o no (entre semana vs fin de semana)
 
-
+df %>%
+  group_by(Pstatus) %>%
+  summarise(mean_Dalc = mean(Dalc), mean_Walc = mean(Walc)) %>%
+  pivot_longer(cols = c(mean_Dalc, mean_Walc), names_to = "Consumo", values_to = "Media") %>%
+  ggplot(aes(x = Pstatus, y = Media, fill = Consumo)) +
+  geom_bar(stat = "identity", position = "dodge", color = "black") +
+  labs(title = "Media de consumo de alcohol según si los padres están separados o no",
+       x = "Estado de los padres",
+       y = "Media de consumo de alcohol",
+       fill = "Consumo") +
+  theme_minimal()
 ```
 
+```{r}
+df %>%
+  group_by(absences) %>%
+  summarise(mean_Dalc = mean(Dalc), mean_Walc = mean(Walc)) %>%
+  pivot_longer(cols = c(mean_Dalc, mean_Walc), names_to = "Consumo", values_to = "Media") %>%
+  ggplot(aes(x = absences, y = Media, color = Consumo)) +
+  geom_line(size = 1) +
+  geom_point(size = 2) +
+  labs(title = "Media de consumo de alcohol en función de las ausencias escolares",
+       x = "Número de ausencias escolares",
+       y = "Media de consumo de alcohol",
+       color = "Consumo") +
+  theme_minimal()
+```

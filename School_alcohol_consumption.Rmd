@@ -3,27 +3,32 @@ title: "School_alcohol_consumption"
 output: html_document
 date: "2024-11-10"
 ---
+# Consumo de alcohol en estudiantes
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+# Pasos KDD
+# Integración
+
+```{r}
+install.packages("dplyr")
+library(dplyr)
 ```
 
-## R Markdown
+```{r}
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+# Lectura de dataset
+df1=read.table("data/student-mat.csv",sep=";",header=TRUE)
+df1 <- df1 %>% 
+  mutate(subject = "math")
+df2=read.table("data/student-por.csv",sep=",",header=TRUE)
+df2 <- df2 %>% 
+  mutate(subject = "portuguese")
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
 
-```{r cars}
-summary(cars)
+df=rbind(df1,df2)
+print(nrow(df)) # 382 students
+print(head(df))
+print(str(df))
 ```
 
-## Including Plots
 
-You can also embed plots, for example:
 
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

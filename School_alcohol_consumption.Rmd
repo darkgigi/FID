@@ -5,8 +5,26 @@ date: "2024-11-10"
 ---
 # Consumo de alcohol en estudiantes
 
-# Pasos KDD
-# Integración
+Con este estudio, el objetivo que pretendemos es analizar el consumo de alcohol en estudiantes
+y su relación con otras variables. Para ello, vamos a utilizar un dataset que contiene información
+sobre estudiantes de dos escuelas portuguesas, incluyendo datos sobre su consumo de alcohol,
+características personales, familiares y académicas. 
+
+## Pasos KDD
+### Integración
+A la hora de observar los dataset, tenemos un dataset para la asignatura de matemáticas y otro para
+la asignatura de portugués. Ambos datasets tienen la misma estructura y se pueden unir en un 
+único dataset. Sin embargo, en este caso, vamos a trabajar con el dataset de portugués.
+
+Esto se debe a que hay 382 instancias que pertenecen a ambas asignaturas, y no queremos duplicar
+la información. Además, el dataset de portugués tiene más instancias que el de matemáticas, 
+por lo que nos aportará más información. El hecho de seleccionar el dataset de portugués solamente
+excluiría a 13 instancias del dataset de matemáticas, por lo que no perderíamos mucha información
+con esta decisión.
+
+Una de las alternativas que estudiamos fue unir ambos datasets y fusionar las instancias duplicadas,
+calculando la media de las notas de ambas asignaturas para cada período. Sin embargo, esto 
+implicaría una pérdida de información, ya que no podríamos analizar las diferencias entre ambas.
 
 ```{r}
 install.packages("dplyr")
@@ -16,19 +34,79 @@ library(dplyr)
 ```{r}
 
 # Lectura de dataset
-df1=read.table("data/student-mat.csv",sep=";",header=TRUE)
-df1 <- df1 %>% 
-  mutate(subject = "math")
-df2=read.table("data/student-por.csv",sep=",",header=TRUE)
-df2 <- df2 %>% 
-  mutate(subject = "portuguese")
+df=read.table("data/student-por.csv",sep=",",header=TRUE)
 
+# Convertir columnas necesarias a factor
+cols_to_factor <- c("school", "sex", "address", "famsize", "Pstatus", "Mjob", 
+                    "Fjob", "reason", "guardian", "schoolsup", "famsup", "paid", 
+                    "activities", "nursery", "higher", "internet", "romantic", "subject")
 
-df=rbind(df1,df2)
-print(nrow(df)) # 382 students
+df[cols_to_factor] <- lapply(df[cols_to_factor], as.factor)
+
+print(nrow(df)) # 1044 students
 print(head(df))
 print(str(df))
 ```
 
+## Visualización
+```{r}
+install.packages("ggplot2")
+library(ggplot2)
+```
 
+```{r}	
+# Histograma de consumo de alcohol entre semana
+ggplot(df, aes(x = Dalc)) +
+  geom_histogram(binwidth = 1, fill = "blue", color = "black") +
+  labs(title = "Histograma de consumo de alcohol en fin de semana",
+       x = "Consumo de alcohol",
+       y = "Frecuencia")
+
+```
+```{r}	
+# Histograma de consumo de alcohol en fin de semana
+ggplot(df, aes(x = Walc)) +
+  geom_histogram(binwidth = 1, fill = "blue", color = "black") +
+  labs(title = "Histograma de consumo de alcohol en fin de semana",
+       x = "Consumo de alcohol",
+       y = "Frecuencia")
+```
+```{r}
+# Gráfico de dispersión de consumo de alcohol entre semana y en fin de semana
+ggplot(df, aes(x = Dalc, y = Walc)) +
+  geom_count(aes(color = ..n.., size = ..n..)) +
+  scale_size_area(max_size = 10) +
+  scale_color_gradient(low = "blue", high = "red") +
+  labs(title = "Consumo de alcohol entre semana y fin de semana",
+       x = "Consumo de alcohol entre semana",
+       y = "Consumo de alcohol fin de semana",
+       size = "Cantidad de instancias",
+       color = "Cantidad de instancias")
+```
+```{r}
+# Gráfico de tarta de la distribución conjunta de Dalc y Walc
+df_count <- df %>%
+  count(Dalc, Walc) %>%
+  mutate(prop = n / sum(n))
+  
+ggplot(df_count, aes(x = "", y = prop, fill = interaction(Dalc, Walc))) +
+  geom_bar(stat = "identity", width = 1, color = "white") +
+  coord_polar("y") +
+  scale_fill_manual(name = "Dalc y Walc",
+                    labels = paste("Dalc:", df_count$Dalc, "- Walc:", df_count$Walc),
+                    values = rainbow(nrow(df_count))) +
+  labs(title = "Distribución conjunta del consumo de alcohol entre semana y en fin de semana",
+       x = NULL, y = NULL) +
+  theme_void()  
+
+```
+
+```{r}
+library(ggplot2)
+ggplot(df, aes(x=Medu, y=Walc)) +
+  geom_boxplot() +
+  labs(x = "Mother's Education Level", y = "Weekend Alcohol Consumption", title = "Relationship Between Mother's Education and Children's Drinking")
+
+
+```
 

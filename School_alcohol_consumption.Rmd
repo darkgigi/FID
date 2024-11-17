@@ -37,13 +37,22 @@ library(dplyr)
 df=read.table("data/student-por.csv",sep=",",header=TRUE)
 
 # Convertir columnas necesarias a factor
-cols_to_factor <- c("school", "sex", "address", "famsize", "Pstatus", "Mjob", 
-                    "Fjob", "reason", "guardian", "schoolsup", "famsup", "paid", 
-                    "activities", "nursery", "higher", "internet", "romantic", "subject")
+cols_to_factor <- c("school", "sex", "address", "famsize", "Pstatus", "Medu", "Fedu", "Mjob", 
+                    "Fjob", "reason", "guardian", "traveltime", "studytime" ,"famrel"
+                    , "freetime", "goout", "health")
 
 df[cols_to_factor] <- lapply(df[cols_to_factor], as.factor)
 
-print(nrow(df)) # 1044 students
+cols_to_boolean <- c("schoolsup", "famsup", "paid", "activities", "nursery", "higher", "internet", "romantic")
+
+df[cols_to_boolean] <- lapply(df[cols_to_boolean], function(x) x == "yes")
+
+# Creamos una versión del dataset con los atributos Dalc y Walc discretizados
+df_discrete <- df %>%
+  mutate(Dalc = as.factor(Dalc),
+         Walc = as.factor(Walc))
+
+print(nrow(df)) 
 print(head(df))
 print(str(df))
 ```
@@ -51,11 +60,13 @@ print(str(df))
 ## Visualización
 ```{r}
 install.packages("ggplot2")
+install.packages("tidyverse")
 library(ggplot2)
+library(tidyr)
 ```
 
+### Histograma de consumo de alcohol entre semana
 ```{r}	
-# Histograma de consumo de alcohol entre semana
 ggplot(df, aes(x = Dalc)) +
   geom_histogram(binwidth = 1, fill = "blue", color = "black") +
   labs(title = "Histograma de consumo de alcohol en fin de semana",
@@ -63,18 +74,18 @@ ggplot(df, aes(x = Dalc)) +
        y = "Frecuencia")
 
 ```
+### Histograma de consumo de alcohol en fin de semana
 ```{r}	
-# Histograma de consumo de alcohol en fin de semana
 ggplot(df, aes(x = Walc)) +
   geom_histogram(binwidth = 1, fill = "blue", color = "black") +
   labs(title = "Histograma de consumo de alcohol en fin de semana",
        x = "Consumo de alcohol",
        y = "Frecuencia")
 ```
+### Gráfico de dispersión de consumo de alcohol entre semana y en fin de semana
 ```{r}
-# Gráfico de dispersión de consumo de alcohol entre semana y en fin de semana
 ggplot(df, aes(x = Dalc, y = Walc)) +
-  geom_count(aes(color = ..n.., size = ..n..)) +
+  geom_count(aes(color = after_stat(n), size = after_stat(n))) +
   scale_size_area(max_size = 10) +
   scale_color_gradient(low = "blue", high = "red") +
   labs(title = "Consumo de alcohol entre semana y fin de semana",
@@ -83,8 +94,8 @@ ggplot(df, aes(x = Dalc, y = Walc)) +
        size = "Cantidad de instancias",
        color = "Cantidad de instancias")
 ```
+### Gráfico de tarta de la distribución conjunta de Dalc y Walc
 ```{r}
-# Gráfico de tarta de la distribución conjunta de Dalc y Walc
 df_count <- df %>%
   count(Dalc, Walc) %>%
   mutate(prop = n / sum(n))
@@ -101,11 +112,64 @@ ggplot(df_count, aes(x = "", y = prop, fill = interaction(Dalc, Walc))) +
 
 ```
 
+### Gráfico de media de consumo de alcohol según si los padres están separados o no (entre semana vs fin de semana)
+
 ```{r}
+df %>%
+  group_by(Pstatus) %>%
+  summarise(mean_Dalc = mean(Dalc), mean_Walc = mean(Walc)) %>%
+  pivot_longer(cols = c(mean_Dalc, mean_Walc), names_to = "Consumo", values_to = "Media") %>%
+  ggplot(aes(x = Pstatus, y = Media, fill = Consumo)) +
+  geom_bar(stat = "identity", position = "dodge", color = "black") +
+  labs(title = "Media de consumo de alcohol según si los padres están separados o no",
+       x = "Estado de los padres",
+       y = "Media de consumo de alcohol",
+       fill = "Consumo") +
+  theme_minimal()
+```
+
+### Gráfico de media de consumo de alcohol en función de las ausencias escolares (entre semana vs fin de semana)
+```{r}
+df %>%
+  group_by(absences) %>%
+  summarise(mean_Dalc = mean(Dalc), mean_Walc = mean(Walc)) %>%
+  pivot_longer(cols = c(mean_Dalc, mean_Walc), names_to = "Consumo", values_to = "Media") %>%
+  ggplot(aes(x = absences, y = Media, color = Consumo)) +
+  geom_line(size = 1) +
+  geom_point(size = 2) +
+  labs(title = "Media de consumo de alcohol en función de las ausencias escolares",
+       x = "Número de ausencias escolares",
+       y = "Media de consumo de alcohol",
+       color = "Consumo") 
+
+```
+
+### Media de consumo según el tiempo de estudio (entre semana vs fin de semana)
+```{r}
+# Asegúrate de que las variables 'studytime' y 'Dalc' están en el formato adecuado
+df$studytime <- factor(df$studytime, levels = c("1", "2", "3", "4"))
+df$Dalc <- as.numeric(as.character(df$Dalc)) # Si 'Dalc' es un factor, convertirlo a numérico
+
+# Eliminar filas con valores NA en las columnas de interés
+df_clean <- df %>%
+  filter(!is.na(Dalc) & !is.na(studytime))
+
+# Agrupar los datos por el tiempo de estudio y calcular la media del consumo de alcohol
+library(dplyr)
+
+df_summary <- df_clean %>%
+  group_by(studytime) %>%
+  summarise(media_consumo = mean(Dalc, na.rm = TRUE))
+
+# Visualización con ggplot2
 library(ggplot2)
-ggplot(df, aes(x=Medu, y=Walc)) +
-  geom_boxplot() +
-  labs(x = "Mother's Education Level", y = "Weekend Alcohol Consumption", title = "Relationship Between Mother's Education and Children's Drinking")
+
+ggplot(df_summary, aes(x = studytime, y = media_consumo, fill = studytime)) +
+  geom_col(show.legend = FALSE) +  # Usar geom_col() para barras con valores pre-calculados
+  labs(title = "Media de consumo de alcohol según el tiempo de estudio",
+       x = "Tiempo de estudio",
+       y = "Media de consumo de alcohol") +
+  theme_minimal()
 
 
 ```
@@ -155,3 +219,71 @@ ggplot(famrel_consumption, aes(x = factor(famrel), y = MediaConsumo, fill = Tipo
     strip.text = element_text(face = "bold")
   )
 ````
+### Media de consumo según el tiempo libre (entre semana vs fin de semana)
+```{r}
+# Asegúrate de que 'freetime' y 'Dalc' están en el formato adecuado
+df$freetime <- factor(df$freetime, levels = c("1", "2", "3", "4", "5"))
+df$Dalc <- as.numeric(as.character(df$Dalc))  # Si 'Dalc' es un factor, convertirlo a numérico
+
+# Eliminar filas con valores NA en las columnas de interés
+df_clean <- df %>%
+  filter(!is.na(Dalc) & !is.na(freetime))
+
+# Agrupar los datos por el tiempo libre y calcular la media del consumo de alcohol
+library(dplyr)
+
+df_summary_freetime <- df_clean %>%
+  group_by(freetime) %>%
+  summarise(media_consumo = mean(Dalc, na.rm = TRUE))
+
+# Visualización con ggplot2
+library(ggplot2)
+
+ggplot(df_summary_freetime, aes(x = freetime, y = media_consumo, fill = freetime)) +
+  geom_col(show.legend = FALSE) +  # Usar geom_col() para barras con valores pre-calculados
+  labs(title = "Media de consumo de alcohol según el tiempo libre",
+       x = "Tiempo libre",
+       y = "Media de consumo de alcohol") +
+  theme_minimal()
+
+
+```
+
+### Media de consumo según el tiempo libre y el tiempo de estudio
+```{r}
+# Asegurarse de que las columnas Walc y Dalc sean numéricas
+df_clean$Walc <- as.numeric(as.character(df_clean$Walc))
+df_clean$Dalc <- as.numeric(as.character(df_clean$Dalc))
+
+# Calcular la media de consumo de alcohol entre semana (Dalc) y fines de semana (Walc)
+df_summary <- df_clean %>%
+  group_by(studytime, freetime) %>%
+  summarise(
+    media_consumo_semanal = mean(Dalc, na.rm = TRUE),  # Media de consumo entre semana
+    media_consumo_finsemana = mean(Walc, na.rm = TRUE)  # Media de consumo fines de semana
+  )
+
+# Verificar la distribución de los valores de Walc y Dalc
+summary(df_summary$media_consumo_semanal)
+summary(df_summary$media_consumo_finsemana)
+
+# Mapa de calor para el consumo de alcohol entre semana (Dalc)
+ggplot(df_summary, aes(x = studytime, y = freetime, fill = media_consumo_semanal)) +
+  geom_tile() +
+  labs(title = "Mapa de calor del consumo de alcohol entre semana",
+       x = "Tiempo de estudio (Horas)",
+       y = "Tiempo libre (1 - Muy bajo a 5 - Muy alto)",
+       fill = "Media de consumo de alcohol") +
+  scale_fill_gradient(low = "white", high = "blue") +
+  theme_minimal()
+
+# Mapa de calor para el consumo de alcohol fines de semana (Walc)
+ggplot(df_summary, aes(x = studytime, y = freetime, fill = media_consumo_finsemana)) +
+  geom_tile() +
+  labs(title = "Mapa de calor del consumo de alcohol fines de semana",
+       x = "Tiempo de estudio (Horas)",
+       y = "Tiempo libre (1 - Muy bajo a 5 - Muy alto)",
+       fill = "Media de consumo de alcohol") +
+  scale_fill_gradient(low = "white", high = "blue") +
+  theme_minimal()
+```

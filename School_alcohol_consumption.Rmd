@@ -109,4 +109,49 @@ ggplot(df, aes(x=Medu, y=Walc)) +
 
 
 ```
+###Media de consumo de alcohol en función de la salud de los estudiantes (entre semana y fin de semana)
+```{r}
+library(ggplot2)
+library(tidyr)
+df %>%
+  group_by(Pstatus) %>%
+  summarise(mean_Dalc = mean(Dalc), mean_Walc = mean(Walc)) %>%
+  pivot_longer(cols = c(mean_Dalc, mean_Walc), names_to = "Consumo", values_to = "Media") %>%
+  ggplot(aes(x = Pstatus, y = Media, fill = Consumo)) +
+  geom_bar(stat = "identity", position = "dodge", color = "black") +
+  labs(title = "Media de consumo de alcohol según si los padres están separados o no",
+       x = "Estado de los padres",
+       y = "Media de consumo de alcohol",
+       fill = "Consumo") +
+  theme_minimal()
+````
+````{r}
+library(ggplot2)
+library(dplyr)
 
+famrel_consumption <- df %>%
+  group_by(famrel) %>%
+  summarise(
+    avg_Dalc = mean(Dalc, na.rm = TRUE),
+    avg_Walc = mean(Walc, na.rm = TRUE)
+  ) %>%
+  pivot_longer(cols = c(avg_Dalc, avg_Walc), names_to = "TipoConsumo", values_to = "MediaConsumo")
+
+# Crear el gráfico
+ggplot(famrel_consumption, aes(x = factor(famrel), y = MediaConsumo, fill = TipoConsumo)) +
+  geom_bar(stat = "identity", position = "dodge", color = "black") +
+  scale_fill_manual(values = c("avg_Dalc" = "blue", "avg_Walc" = "red"), 
+                    labels = c("Entre semana", "Fin de semana")) +
+  labs(
+    title = "Media del consumo de alcohol según relación familiar",
+    x = "Relación familiar (1: muy mala, 5: excelente)",
+    y = "Consumo promedio de alcohol",
+    fill = "Tipo de consumo"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "bottom",
+    legend.title = element_text(face = "bold"),
+    strip.text = element_text(face = "bold")
+  )
+````

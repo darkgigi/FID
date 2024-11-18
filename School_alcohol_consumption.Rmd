@@ -110,3 +110,84 @@ ggplot(df, aes(x=Medu, y=Walc)) +
 
 ```
 
+```{r}
+######################## Consumo de alcohol en función de la frecuencia de salida (entre semana vs fin de semana) ########################
+
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+# Agrupar los datos por la frecuencia de salida y calcular las medias
+df_summary <- df %>%
+  group_by(goout) %>%
+  summarise(
+    average_consumption_dalc = mean(Dalc, na.rm = TRUE),
+    average_consumption_walc = mean(Walc, na.rm = TRUE)
+  )
+
+# Transformar los datos al formato largo
+df_long <- df_summary %>%
+  pivot_longer(
+    cols = c(average_consumption_dalc, average_consumption_walc),
+    names_to = "type_of_consumption",
+    values_to = "average_consumption"
+  )
+
+# Visualización con ggplot2
+ggplot(df_long, aes(x = factor(goout), y = average_consumption, fill = type_of_consumption)) +
+  geom_col(position = "dodge") +  # Barras lado a lado
+  labs(
+    title = "Media de consumo de alcohol según la frecuencia de salida (Laborables vs Fines de semana)",
+    x = "Frecuencia de salida",
+    y = "Media de consumo de alcohol",
+    fill = "Tipo de consumo"
+  ) +
+  scale_fill_manual(
+    values = c("average_consumption_dalc" = "steelblue", 
+               "average_consumption_walc" = "darkorange"),
+    labels = c("average_consumption_dalc" = "Días laborables", 
+               "average_consumption_walc" = "Fin de semana")
+  ) +
+  theme_minimal()
+```
+
+```{r}
+######################## Media de consumo según la edad (entre semana vs fin de semana) ########################
+
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+# Agrupar los datos por la edad del alumno y calcular las medias
+df_summary <- df %>%
+  group_by(age) %>%
+  summarise(
+    average_consumption_dalc = mean(Dalc, na.rm = TRUE),
+    average_consumption_walc = mean(Walc, na.rm = TRUE)
+  )
+
+# Transformar los datos al formato largo
+df_long <- df_summary %>%
+  pivot_longer(
+    cols = c(average_consumption_dalc, average_consumption_walc),
+    names_to = "type_of_consumption",
+    values_to = "average_consumption"
+  )
+
+# Visualización con ggplot2
+ggplot(df_long, aes(x = factor(age), y = average_consumption, fill = type_of_consumption)) +
+  geom_col(position = "dodge") +  # Barras lado a lado
+  labs(
+    title = "Media de consumo de alcohol según la edad (Laborables vs Fines de semana)",
+    x = "Edad del alumno",
+    y = "Media de consumo de alcohol",
+    fill = "Tipo de consumo"
+  ) +
+  scale_fill_manual(
+    values = c("average_consumption_dalc" = "steelblue", 
+               "average_consumption_walc" = "darkorange"),
+    labels = c("average_consumption_dalc" = "Días laborables", 
+               "average_consumption_walc" = "Fin de semana")
+  ) +
+  theme_minimal()
+```

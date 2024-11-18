@@ -242,3 +242,63 @@ ggplot(df_summary, aes(x = studytime, y = freetime, fill = media_consumo_finsema
   scale_fill_gradient(low = "white", high = "blue") +
   theme_minimal()
 ```
+
+## Limpieza
+(Se queda en blanco de momento)
+
+## Transformación
+(Se queda en blanco de momento)
+
+## Minería de datos
+### Asociación
+```{r}
+install.packages("arules")
+library(arules)
+install.packages("caret")
+library(caret)
+install.packages("FSelector")
+library(FSelector)
+```
+
+## Cuando se reorganice el documento, esto hay que subirlo a preprocesamiento :)
+```{r}
+# Descartar la columna 'Dalc' del dataset
+df_asociation_walc <- df_discrete[, -which(names(df_discrete) == "Dalc")]
+df_asociation_dalc <- df_discrete[, -which(names(df_discrete) == "Walc")]
+
+```
+
+
+```{r}
+# Ejecutar el algoritmo Apriori
+# rules <- apriori(df_asociation_dalc, parameter = list(supp = 0.01, conf = 0.8))
+
+rules <- apriori(df_asociation_dalc, parameter = list(supp = 0.05, conf = 0.9, maxlen = 3))
+
+# Inspeccionar las primeras reglas generadas
+inspect(head(rules))
+```
+
+```{r}
+# Filtrar por elevación
+rules_lift <- subset(rules, lift > 1.2)
+
+# Ordenar por confianza
+rules_sorted <- sort(rules_lift, by = "confidence", decreasing = TRUE)
+
+# Inspeccionar reglas filtradas y ordenadas
+inspect(head(rules_sorted, 10))
+
+```
+
+```{r}
+install.packages("arulesViz")
+library(arulesViz)
+
+# Visualización básica
+plot(rules_sorted)
+
+# Gráfico interactivo
+plot(rules_sorted, method = "graph", engine = "htmlwidget")
+
+````

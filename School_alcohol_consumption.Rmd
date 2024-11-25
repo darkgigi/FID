@@ -183,8 +183,9 @@ df %>%
        y = "Media de consumo de alcohol",
        fill = "Consumo") +
   theme_minimal()
-````
-````{r}
+```
+### Media de consumo de alcohol según la relación familiar
+```{r}
 library(ggplot2)
 library(dplyr)
 
@@ -213,7 +214,7 @@ ggplot(famrel_consumption, aes(x = factor(famrel), y = MediaConsumo, fill = Tipo
     legend.title = element_text(face = "bold"),
     strip.text = element_text(face = "bold")
   )
-````
+```
 ### Media de consumo según el tiempo libre (entre semana vs fin de semana)
 ```{r}
 # Asegúrate de que 'freetime' y 'Dalc' están en el formato adecuado

@@ -47,11 +47,6 @@ cols_to_boolean <- c("schoolsup", "famsup", "paid", "activities", "nursery", "hi
 
 df[cols_to_boolean] <- lapply(df[cols_to_boolean], function(x) x == "yes")
 
-# Creamos una versión del dataset con los atributos Dalc y Walc discretizados
-df_discrete <- df %>%
-  mutate(Dalc = as.factor(Dalc),
-         Walc = as.factor(Walc))
-
 print(nrow(df)) 
 print(head(df))
 print(str(df))
@@ -286,4 +281,191 @@ ggplot(df_summary, aes(x = studytime, y = freetime, fill = media_consumo_finsema
        fill = "Media de consumo de alcohol") +
   scale_fill_gradient(low = "white", high = "blue") +
   theme_minimal()
+```
+
+## Limpieza
+(Se queda en blanco de momento)
+
+## Primera minería de datos
+En esta sección, realizamos una minería de datos a priori, con el objetivo de encontrar reglas de asociación.
+Sin embargo, nos encontramos con un problema, ya que el dataset estaba bastante desbalanceado y había muchas
+clases. Por ello, tras este apartado decidimos realizar una transformación (que en principio creimos que 
+no era necesaria) para poder trabajar con un dataset más equilibrado.
+### Asociación
+```{r}
+install.packages("arules")
+library(arules)
+install.packages("caret")
+library(caret)
+install.packages("FSelector")
+library(FSelector)
+```
+
+## Cuando se reorganice el documento, esto hay que subirlo a preprocesamiento :)
+```{r}
+# Descartar la columna 'Dalc' del dataset
+df_association <- df %>%
+  mutate(Dalc = as.factor(Dalc),
+         Walc = as.factor(Walc))
+df_asociation_walc <- df_association[, -which(names(df_association) == "Dalc")]
+df_asociation_dalc <- df_association[, -which(names(df_association) == "Walc")]
+
+```
+
+```{r}
+# Ejecutar el algoritmo Apriori
+# rules <- apriori(df_asociation_dalc, parameter = list(supp = 0.01, conf = 0.8))
+
+rules <- apriori(df_asociation_dalc,
+                 parameter = list(supp = 0.05, conf = 0.8, maxlen = 3),
+                 appearance = list(rhs = paste("Dalc=", c("1","2","3", "4", "5"), sep="")))
+
+# Inspeccionar las primeras reglas generadas
+inspect(head(rules))
+```
+
+En este caso, vamos a buscar reglas de asociación para el consumo de alcohol entre
+semana para valores 3, 4 y 5. Esto debido a que como se observó anteriormente, con
+un soporte y confianza mayores solo se obtienen reglas relacionadas con consumo bajo 
+de alcohol, lo cual no ayuda a tener referencia de todas las clases.
+```{r}
+# Ejecutar el algoritmo Apriori
+# rules <- apriori(df_asociation_dalc, parameter = list(supp = 0.01, conf = 0.8))
+
+rules <- apriori(df_asociation_dalc, 
+                 parameter = list(supp = 0.001, conf = 0.6, maxlen = 3),
+                 appearance = list(rhs = paste("Dalc=", c( "3", "4", "5"), sep="")))
+
+# Inspeccionar las primeras reglas generadas
+inspect(head(rules))
+```
+
+```{r}
+# Filtrar por elevación
+rules_lift <- subset(rules, lift > 1.2)
+
+# Ordenar por confianza
+rules_sorted <- sort(rules_lift, by = "confidence", decreasing = TRUE)
+
+# Inspeccionar reglas filtradas y ordenadas
+inspect(head(rules_sorted, 10))
+
+```
+
+```{r}
+install.packages("arulesViz")
+library(arulesViz)
+
+# Visualización básica
+plot(rules_sorted)
+
+# Gráfico interactivo
+plot(rules_sorted, method = "graph", engine = "htmlwidget")
+
+```
+
+Como se puede observar, las reglas de asociación obtenidas no son muy útiles, ya que
+la mayoría de las reglas tienen una confianza muy baja. Esto se debe a que el dataset
+está muy desbalanceado, y la mayoría de las instancias pertenecen a la clase 1 de consumo
+de alcohol entre semana. Por ello, vamos a realizar una transformación para equilibrar
+el dataset y volver a realizar la minería de datos.
+
+## Transformación
+Como se puede observar, el dataset está desbalanceado, por lo que se nos plantean varias casuísticas, primeramente se han realizado algunas transoformaciones,
+como la creación de dos nuevas columnas, una para el consumo de alcohol diario (Dalc) y otra para el consumo de alcohol durante los fin de semanas (Walc). En estas
+nuevas columnas se han agrupado las diferentes frecuencias de consumo, siendo True si se consume entre 3,4 o 5, o False si está entre 1 y 2 entre semana y,  True si se consume entre 4 o 5 y False si está entre 1, 2 y 3 en fin de semana .
+
+```{r}
+df <- df %>%
+  mutate(Hdalc = Dalc >= 2,
+         Hwalc = Walc >= 3)
+
+df <- df %>%
+  select(-Dalc, -Walc)
+
+df$Hdalc <- as.integer(df$Hdalc)
+df$Hwalc <- as.integer(df$Hwalc)
+
+# Printea cuantos valores hay de cada clase
+table(df$Hdalc)
+table(df$Hwalc)
+```
+
+## Segunda minería de datos
+Tras realizar la transformación, volvemos a realizar la minería de datos a priori para encontrar reglas de asociación.
+### Asociación
+#### Consumo de alcohol entre semana
+```{r}
+# Descartar la columna 'Dalc' del dataset
+df_association <- df %>%
+  mutate(Hdalc = as.factor(Hdalc),
+         Hwalc = as.factor(Hwalc))
+df_asociation_hwalc <- df_association[, -which(names(df_association) == "Hdalc")]
+df_asociation_hdalc <- df_association[, -which(names(df_association) == "Hwalc")]
+
+```
+
+```{r}
+# Ejecutar el algoritmo Apriori
+
+rules <- apriori(df_asociation_hdalc, 
+                 parameter = list(supp = 0.05, conf = 0.7),
+                 appearance = list(rhs = paste("Hdalc=", c("1"), sep="")))
+
+# Inspeccionar las primeras reglas generadas
+inspect(head(rules))
+```  
+
+```{r}
+# Filtrar por elevación
+rules_lift <- subset(rules, lift > 1.2)
+
+# Ordenar por confianza
+rules_sorted <- sort(rules_lift, by = "confidence", decreasing = TRUE)
+
+# Inspeccionar reglas filtradas y ordenadas
+inspect(head(rules_sorted, 10))
+
+```
+
+```{r}
+# Visualización básica
+plot(rules_sorted)
+
+# Gráfico interactivo
+plot(rules_sorted, method = "graph", engine = "htmlwidget")
+
+```
+
+#### Consumo de alcohol en fin de semana
+```{r}
+# Ejecutar el algoritmo Apriori
+
+rules <- apriori(df_asociation_hwalc, 
+                 parameter = list(supp = 0.05, conf = 0.8),
+                 appearance = list(rhs = paste("Hwalc=", c("1"), sep="")))
+
+# Inspeccionar las primeras reglas generadas
+inspect(head(rules))
+```  
+
+```{r}
+# Filtrar por elevación
+rules_lift <- subset(rules, lift > 1.2)
+
+# Ordenar por confianza
+rules_sorted <- sort(rules_lift, by = "confidence", decreasing = TRUE)
+
+# Inspeccionar reglas filtradas y ordenadas
+inspect(head(rules_sorted, 10))
+
+```
+
+```{r}
+# Visualización básica
+plot(rules_sorted)
+
+# Gráfico interactivo
+plot(rules_sorted, method = "graph", engine = "htmlwidget")
+
 ```

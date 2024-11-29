@@ -1,0 +1,361 @@
+```{r}
+library(dplyr)
+library(caret)
+library(pROC)
+```
+
+```{r}
+# Lectura de dataset
+df=read.table("data/student-por.csv",sep=",",header=TRUE)
+
+# Convertir columnas necesarias a factor
+cols_to_factor <- c("school", "sex", "address", "famsize", "Pstatus", "Medu", "Fedu", "Mjob", 
+                    "Fjob", "reason", "guardian", "traveltime", "studytime" ,"famrel"
+                    , "freetime", "goout", "health")
+
+df[cols_to_factor] <- lapply(df[cols_to_factor], as.factor)
+
+cols_to_boolean <- c("schoolsup", "famsup", "paid", "activities", "nursery", "higher", "internet", "romantic")
+
+df[cols_to_boolean] <- lapply(df[cols_to_boolean], function(x) x == "yes")
+
+df <- df %>%
+  mutate(
+    Hdalc = factor(if_else(Dalc >= 2, "Yes", "No"), levels = c("No", "Yes")),
+    Hwalc = factor(if_else(Walc >= 3, "Yes", "No"), levels = c("No", "Yes"))
+  )
+
+df <- df %>%
+  select(-Dalc, -Walc)
+
+# Printea cuantos valores hay de cada clase
+table(df$Hdalc)
+table(df$Hwalc)
+write.table(df,"data/student-Consumption.csv",sep=",")
+# K-fold cross validation
+set.seed(123)
+k = 5
+train_control <- trainControl(method = "cv", number = k, savePredictions = TRUE, classProbs = TRUE, summaryFunction = twoClassSummary)
+```
+
+```{r}
+
+data <- df;
+
+# Convertir Hdalc en numérica (Yes = 1, No = 0)
+data$Hdalc_numeric <- ifelse(data$Hdalc == "Yes", 1, 0)
+
+# Verificar los valores únicos en Hdalc_numeric
+table(data$Hdalc_numeric)
+
+# Clustering con K-means
+set.seed(42)  # Para reproducibilidad
+kmeans_result <- kmeans(data$Hdalc_numeric, centers = 2)
+
+# Añadir el clúster al dataset
+data$cluster <- kmeans_result$cluster
+
+# Resumen del número de observaciones por clúster
+table(data$cluster)
+
+# Visualizar los clústeres
+library(ggplot2)
+ggplot(data, aes(x = Hdalc_numeric, fill = as.factor(cluster))) +
+  geom_histogram(binwidth = 0.5, position = "dodge") +
+  labs(title = "Clustering basado en Hdalc", x = "Hdalc (0: No, 1: Yes)", fill = "Clúster") +
+  theme_minimal()
+
+```
+
+```{r}
+# Seleccionar variables relevantes
+cluster_data <- data[, c("Hdalc_numeric", "goout", "freetime", "health", "absences", "G1", "G2", "G3")]
+
+# Verificar el tipo de cada columna
+str(cluster_data)
+
+# Convertir factores a numéricos
+cluster_data <- data.frame(lapply(cluster_data, function(x) {
+  if (is.factor(x) || is.character(x)) {
+    as.numeric(as.character(x))
+  } else {
+    x
+  }
+}))
+
+# Normalizar las variables
+cluster_data <- scale(cluster_data)
+
+# Aplicar K-means
+set.seed(123)
+kmeans_result <- kmeans(cluster_data, centers = 3)  # Elegir 3 clústeres
+
+# Añadir los clústeres al dataset
+df$cluster <- kmeans_result$cluster
+
+# Resumen de los clústeres
+table(df$cluster)
+
+# Visualizar los clústeres
+ggplot(df, aes(x = goout, y = freetime, color = as.factor(cluster))) +
+  geom_point() +
+  labs(title = "Clústeres basados en goout y freetime", x = "Salir con amigos", y = "Tiempo libre", color = "Clúster")
+
+```
+
+```{r}
+# Instalar y cargar scatterplot3d
+if (!requireNamespace("scatterplot3d", quietly = TRUE)) {
+  install.packages("scatterplot3d")
+}
+library(scatterplot3d)
+
+# Generar la gráfica 3D
+scatterplot3d(
+  x = df$goout,
+  y = df$freetime,
+  z = df$Hdalc_numeric,
+  color = as.numeric(df$cluster),
+  pch = 19,
+  xlab = "Salir con amigos (goout)",
+  ylab = "Tiempo libre (freetime)",
+  zlab = "Consumo de alcohol (Hdalc)",
+  main = "Clústeres basados en goout, freetime y Hdalc"
+)
+
+
+```
+
+#Con variables mas importantes
+
+```{r}
+
+data <- df;
+
+# Convertir Hdalc en numérica (Yes = 1, No = 0)
+data$Hdalc_numeric <- ifelse(data$Hdalc == "Yes", 1, 0)
+
+# Seleccionar las variables importantes
+selected_vars <- data[, c("Hdalc_numeric", "absences", "G1", "G2", "G3")]
+
+# Normalizar las variables (opcional pero recomendado)
+selected_vars_scaled <- scale(selected_vars)
+
+# Aplicar K-means
+set.seed(123)  # Asegurar reproducibilidad
+kmeans_result <- kmeans(selected_vars_scaled, centers = 3)  # Ajusta el número de clústeres (k)
+
+# Añadir los clústeres al dataframe original
+data$cluster <- as.factor(kmeans_result$cluster)
+
+# Ver resumen de los clústeres
+table(data$cluster)
+
+df$cluster <- as.factor(data$cluster)
+
+# Visualizar los clústeres
+library(ggplot2)
+
+# Gráfico 2D para los clústeres usando las dos primeras variables
+ggplot(df, aes(x = G3, y = Hdalc, color = cluster)) +
+  geom_point(size = 3) +
+  labs(title = "Clustering K-means: G3 vs HDalc", x = "G3", y = "HDalc", color = "Clúster") +
+  theme_minimal()
+
+library(cluster)
+silhouette_score <- silhouette(kmeans_result$cluster, dist(selected_vars_scaled))
+plot(silhouette_score)
+
+```
+
+```{r}
+# Instalar scatterplot3d si no está instalado
+if (!requireNamespace("scatterplot3d", quietly = TRUE)) {
+  install.packages("scatterplot3d")
+}
+library(scatterplot3d)
+
+# Crear gráfico 3D
+scatterplot3d(
+  x = data$absences,
+  y = data$G3,
+  z = data$Hdalc_numeric,
+  color = as.numeric(data$cluster),
+  pch = 19,
+  xlab = "Número de ausencias",
+  ylab = "Calificación final (G3)",
+  zlab = "Consumo de alcohol diario (Hdalc)",
+  main = "Clústeres en 3D"
+)
+
+
+# Instalar y cargar plotly si no está instalado
+if (!requireNamespace("plotly", quietly = TRUE)) {
+  install.packages("plotly")
+}
+library(plotly)
+
+# Convertir cluster a factor
+df$cluster <- as.factor(df$cluster)
+
+
+# Crear gráfico 3D interactivo
+plot_ly(
+  data = df, 
+  x = ~absences, 
+  y = ~G3, 
+  z = ~Hdalc, 
+  color = ~cluster, 
+  colors = c("red", "green", "blue"),
+  type = "scatter3d", 
+  mode = "markers"
+) %>%
+  layout(title = "Clústeres en 3D: absences, G3 y Hdalc",
+         scene = list(
+           xaxis = list(title = "Ausencias"),
+           yaxis = list(title = "Calificación final (G3)"),
+           zaxis = list(title = "Consumo de alcohol diario (Hdalc)")
+         ))
+
+```
+
+```{r}
+
+data <- df;
+
+# Convertir Hdalc en numérica (Yes = 1, No = 0)
+data$Hwalc_numeric <- ifelse(data$Hwalc == "Yes", 1, 0)
+
+# Verificar los valores únicos en Hdalc_numeric
+table(data$Hwalc_numeric)
+
+# Clustering con K-means
+set.seed(42)  # Para reproducibilidad
+kmeans_result <- kmeans(data$Hwalc_numeric, centers = 2)
+
+# Añadir el clúster al dataset
+data$cluster <- kmeans_result$cluster
+
+# Resumen del número de observaciones por clúster
+table(data$cluster)
+
+# Visualizar los clústeres
+library(ggplot2)
+ggplot(data, aes(x = Hwalc_numeric, fill = as.factor(cluster))) +
+  geom_histogram(binwidth = 0.5, position = "dodge") +
+  labs(title = "Clustering basado en Hwalc", x = "Hdalc (0: No, 1: Yes)", fill = "Clúster") +
+  theme_minimal()
+
+```
+
+```{r}
+# Seleccionar variables relevantes
+cluster_data <- data[, c("Hwalc_numeric", "goout", "freetime", "health", "absences", "G1", "G2", "G3")]
+
+# Verificar el tipo de cada columna
+str(cluster_data)
+
+# Convertir factores a numéricos
+cluster_data <- data.frame(lapply(cluster_data, function(x) {
+  if (is.factor(x) || is.character(x)) {
+    as.numeric(as.character(x))
+  } else {
+    x
+  }
+}))
+
+# Normalizar las variables
+cluster_data <- scale(cluster_data)
+
+# Aplicar K-means
+set.seed(123)
+kmeans_result <- kmeans(cluster_data, centers = 3)  # Elegir 3 clústeres
+
+# Añadir los clústeres al dataset
+df$cluster <- kmeans_result$cluster
+
+# Resumen de los clústeres
+table(df$cluster)
+
+# Visualizar los clústeres
+ggplot(df, aes(x = goout, y = freetime, color = as.factor(cluster))) +
+  geom_point() +
+  labs(title = "Clústeres basados en goout y freetime", x = "Salir con amigos", y = "Tiempo libre", color = "Clúster")
+
+```
+
+```{r}
+# Instalar y cargar scatterplot3d
+if (!requireNamespace("scatterplot3d", quietly = TRUE)) {
+  install.packages("scatterplot3d")
+}
+library(scatterplot3d)
+
+# Generar la gráfica 3D
+scatterplot3d(
+  x = df$goout,
+  y = df$freetime,
+  z = df$Hwalc_numeric,
+  color = as.numeric(df$cluster),
+  pch = 19,
+  xlab = "Salir con amigos (goout)",
+  ylab = "Tiempo libre (freetime)",
+  zlab = "Consumo de alcohol (Hwalc)",
+  main = "Clústeres basados en goout, freetime y Hwalc"
+)
+
+```
+
+```{r}
+
+# Instalar scatterplot3d si no está instalado
+if (!requireNamespace("scatterplot3d", quietly = TRUE)) {
+  install.packages("scatterplot3d")
+}
+library(scatterplot3d)
+
+# Crear gráfico 3D
+scatterplot3d(
+  x = data$absences,
+  y = data$G3,
+  z = data$Hwalc_numeric,
+  color = as.numeric(data$cluster),
+  pch = 19,
+  xlab = "Número de ausencias",
+  ylab = "Calificación final (G3)",
+  zlab = "Consumo de alcohol diario (Hwalc)",
+  main = "Clústeres en 3D"
+)
+
+
+# Instalar y cargar plotly si no está instalado
+if (!requireNamespace("plotly", quietly = TRUE)) {
+  install.packages("plotly")
+}
+library(plotly)
+
+# Convertir cluster a factor
+df$cluster <- as.factor(df$cluster)
+
+
+# Crear gráfico 3D interactivo
+plot_ly(
+  data = df, 
+  x = ~absences, 
+  y = ~G3, 
+  z = ~Hwalc, 
+  color = ~cluster, 
+  colors = c("red", "green", "blue"),
+  type = "scatter3d", 
+  mode = "markers"
+) %>%
+  layout(title = "Clústeres en 3D: absences, G3 y Hwalc",
+         scene = list(
+           xaxis = list(title = "Ausencias"),
+           yaxis = list(title = "Calificación final (G3)"),
+           zaxis = list(title = "Consumo de alcohol diario (Hwalc)")
+         ))
+
+```
+
+\`\`\`

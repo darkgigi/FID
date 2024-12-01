@@ -1,0 +1,82 @@
+```{r}
+library(tidyverse)
+library(cluster)
+library(factoextra)
+library(caret)
+library(ggplot2)
+library(rgl)
+
+# 2. Cargar el dataset
+data <- df
+
+# 3. Seleccionar las variables a tener en cuenta en la clusterización. Hemos elegido las variables que hemos considerado más interesantes relativas a las notas obtenidas y al consumo de alcohol de los alumnos
+relevant_variables <- data %>% select(G1, G2, G3, Dalc, Walc)
+
+# 4. Convertir variables categóricas a variables numéricas utilizando one-hot encoding
+dummies <- dummyVars(~ ., data = relevant_variables)
+variables_encoded <- predict(dummies, newdata = relevant_variables)
+
+# 5. Escalar las variables
+variables_scaled <- scale(variables_encoded)
+
+# 5.1. Calcular Silhouette para determinar el número óptimo de clusters
+silhouette_scores <- function(k) {
+  km <- kmeans(variables_scaled, centers = k, nstart = 25)
+  ss <- silhouette(km$cluster, dist(variables_scaled))
+  mean(ss[, 3])
+}
+
+# Calcular el índice de Silhouette para diferentes números de clusters
+k_values <- 2:10
+avg_silhouette <- sapply(k_values, silhouette_scores)
+
+# Graficar el índice de Silhouette
+plot(k_values, avg_silhouette, type = "b", pch = 19, frame = FALSE, 
+     xlab = "Número de clusters K", ylab = "Promedio del índice de Silhouette",
+     main = "Promedio del índice de Silhouette para K")
+
+# 6. Determinar el número óptimo de clusters (Método del codo)
+fviz_nbclust(variables_scaled, FUNcluster = function(x, k) kmeans(x, centers = k, nstart = 25), method = "wss") +
+  geom_vline(xintercept = 3, linetype = 2) +
+  labs(title = "Método del Codo para Determinar el Número de Clústeres")
+
+# 7. Aplicar K-means con k = 3 (modificar si se detecta otro valor óptimo)
+set.seed(42) # Para reproducibilidad
+kmeans_result <- kmeans(variables_scaled, centers = 3, nstart = 25)
+
+# 8. Agregar el resultado al dataset original
+data$cluster <- as.factor(kmeans_result$cluster)
+
+# 9. Visualización de clusters en las dimensiones originales (ND)
+fviz_cluster(kmeans_result, data = variables_scaled, 
+             geom = "point", 
+             ellipse.type = "convex", 
+             ggtheme = theme_minimal()) +
+  labs(title = "Resultados del Clustering K-means en Dimensiones Originales")
+
+# 10. Reducir la dimensionalidad a 3 dimensiones utilizando PCA
+pca_result <- prcomp(variables_scaled, center = TRUE, scale. = TRUE)
+pca_data <- data.frame(pca_result$x[, 1:3], cluster = as.factor(kmeans_result$cluster))
+
+# 11. Graficar los resultados en 3D utilizando rgl
+plot3d(pca_data$PC1, pca_data$PC2, pca_data$PC3, col = as.numeric(pca_data$cluster), type = "s", size = 1)
+title3d("Clustering K-means con PCA", xlab = "Componente Principal 1", ylab = "Componente Principal 2", zlab = "Componente Principal 3")
+
+# 12. Análisis descriptivo de los clusters
+data %>% group_by(cluster) %>%
+  summarise(across(c(G1, G2, G3, Dalc, Walc), mean, na.rm = TRUE))
+
+# Variables más representativas 
+# Dim1
+fviz_contrib(pca_result, choice = "var", axes = 1, top = 5)
+# Dim2
+fviz_contrib(pca_result, choice = "var", axes = 2, top = 5)
+```
+
+```{r}
+# Silhouette
+
+
+
+
+```

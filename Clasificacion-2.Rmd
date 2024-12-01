@@ -1,0 +1,192 @@
+```{r}
+library(dplyr)
+library(caret)
+library(pROC)
+```
+
+```{r}
+
+# Lectura de dataset
+df=read.table("data/student-por.csv",sep=",",header=TRUE)
+
+# Convertir columnas necesarias a factor
+cols_to_factor <- c("school", "sex", "address", "famsize", "Pstatus", "Medu", "Fedu", "Mjob", 
+                    "Fjob", "reason", "guardian", "traveltime", "studytime" ,"famrel"
+                    , "freetime", "goout", "health")
+
+df[cols_to_factor] <- lapply(df[cols_to_factor], as.factor)
+
+cols_to_boolean <- c("schoolsup", "famsup", "paid", "activities", "nursery", "higher", "internet", "romantic")
+
+df[cols_to_boolean] <- lapply(df[cols_to_boolean], function(x) x == "yes")
+
+df <- df %>%
+  mutate(
+    Hdalc = factor(if_else(Dalc >= 2, "Yes", "No"), levels = c("No", "Yes")),
+    Hwalc = factor(if_else(Walc >= 3, "Yes", "No"), levels = c("No", "Yes"))
+  )
+
+df <- df %>%
+  select(-Dalc, -Walc)
+
+# Printea cuantos valores hay de cada clase
+table(df$Hdalc)
+table(df$Hwalc)
+```
+
+```{r}
+# K-fold cross validation
+set.seed(123)
+k = 5
+train_control <- trainControl(method = "cv", number = k, savePredictions = TRUE, classProbs = TRUE, summaryFunction = twoClassSummary)
+```
+
+```{r}
+# Modelo de regresión logística
+glm_dalc <- train(Hdalc ~ ., data = df, method = "glm", trControl = train_control, family = "binomial")
+glm_walc <- train(Hwalc ~ ., data = df, method = "glm", trControl = train_control, family = "binomial")
+
+print(glm_dalc)
+print(glm_walc)
+
+# Matriz de confusión
+confusionMatrix(glm_dalc)
+confusionMatrix(glm_walc)
+
+```
+
+```{r}
+glmnet_dalc <- train(Hdalc ~ ., data = df, method = "glmnet", trControl = train_control, family = "binomial")
+glmnet_walc <- train(Hwalc ~ ., data = df, method = "glmnet", trControl = train_control, family = "binomial")
+
+print(glmnet_dalc)
+print(glmnet_walc)
+
+```
+
+```{r}
+glmnet_tuning_dalc <- train(Hdalc ~ ., data = df, method = "glmnet", trControl = train_control, family = "binomial", tuneGrid = expand.grid(alpha = 0:1, lambda = seq(0.001, 0.1, length = 10)))
+glmnet_tuning_walc <- train(Hwalc ~ ., data = df, method = "glmnet", trControl = train_control, family = "binomial", tuneGrid = expand.grid(alpha = 0:1, lambda = seq(0.001, 0.1, length = 10)))
+
+print(glmnet_tuning_dalc)
+print(glmnet_tuning_walc)
+```
+
+```{r}
+# Rpart
+rpart_dalc <- train(Hdalc ~ ., data = df, method = "rpart", trControl = train_control)
+rpart_walc <- train(Hwalc ~ ., data = df, method = "rpart", trControl = train_control)
+
+print(rpart_dalc)
+print(rpart_walc)
+```
+
+```{r}
+# Random Forest
+rf_dalc <- train(Hdalc ~ ., data = df, method = "rf", trControl = train_control)
+rf_walc <- train(Hwalc ~ ., data = df, method = "rf", trControl = train_control)
+
+print(rf_dalc)
+print(rf_walc)
+```
+
+```{r}
+# GBM
+gbm_dalc <- train(Hdalc ~ ., data = df, method = "gbm", trControl = train_control)
+gbm_walc <- train(Hwalc ~ ., data = df, method = "gbm", trControl = train_control)
+
+print(gbm_dalc)
+print(gbm_walc)
+```
+
+```{r}
+# XGBoost
+xgboost_dalc <- suppressWarnings(train(Hdalc ~ ., data = df, method = "xgbTree", trControl = train_control))
+xgboost_walc <- suppressWarnings(train(Hwalc ~ ., data = df, method = "xgbTree", trControl = train_control))
+
+print(xgboost_dalc)
+print(xgboost_walc)
+```
+
+```{r}
+# NB
+nb_dalc <- train(Hdalc ~ ., data = df, method = "nb", trControl = train_control)
+nb_walc <- train(Hwalc ~ ., data = df, method = "nb", trControl = train_control)
+
+print(nb_dalc)
+print(nb_walc)
+```
+
+###KNN
+
+```{r}
+set.seed(42)
+knn_model_Hdalc <- train(Hdalc ~ ., data = df, method = "knn", trControl = train_control, tuneGrid = expand.grid(k = 1:10))  # Ajuste de k entre 1 y 10
+knn_model_Hwalc <- train(Hwalc ~ ., data = df, method = "knn", trControl = train_control, tuneGrid = expand.grid(k = 1:10))  # Ajuste de k 
+# Mostrar el mejor modelo
+print(knn_model_Hdalc)
+print(knn_model_Hwalc)
+```
+
+###SVM
+
+```{r}
+# Entrenar el modelo SVM radial con validación cruzada
+set.seed(42)
+# Definir un grid de hiperparámetros
+grid <- expand.grid(C = c(0.1, 1, 10), sigma = c(0.01, 0.05, 0.1))
+
+# Entrenar el modelo SVM radial con ajuste manual
+set.seed(42)
+svm_model_Hdalc <- train(Hdalc ~ ., data = df, method = "svmRadial", trControl = train_control,tuneGrid = grid)
+svm_model_Hwalc <- train(Hwalc ~ ., data = df, method = "svmRadial", trControl = train_control,tuneGrid = grid)
+
+# Mostrar el mejor modelo
+print(svm_model_Hdalc)
+print(svm_model_Hwalc)
+
+
+```
+
+###CART
+
+```{r}
+# Entrenar el modelo SVM radial con validación cruzada
+set.seed(42)
+cart_model_Hdalc <- train(Hdalc ~ ., data = df, method = "rpart", trControl = train_control,   # Configuración de k-fold
+                    tuneLength = 10)  # Ajuste de hiperparámetros
+cart_model_Hwalc <- train(Hwalc ~ ., data = df, method = "rpart", trControl = train_control,   # Configuración de k-fold
+                    tuneLength = 10)  # Ajuste de hiperparámetros
+# Mostrar el mejor modelo
+print(cart_model_Hdalc)
+print(cart_model_Hwalc)
+
+```
+
+```{r}
+# Model List Dalc
+models_dalc <- list(GLM = glm_dalc, GLMNET = glmnet_dalc, GLMNETTUNING = glmnet_tuning_dalc, RPART = rpart_dalc, RF = rf_dalc, GBM = gbm_dalc, XGB = xgboost_dalc, NB = nb_dalc, KNN=knn_model_Hdalc,SVM=svm_model_Hdalc,CART=cart_model_Hdalc)
+
+# Results
+results_dalc <- resamples(models_dalc)
+
+summary(results_dalc)
+
+# Visual Comparison ROC
+bwplot(results_dalc, metric = "ROC")
+dotplot(results_dalc, metric = "ROC")
+```
+
+```{r}
+# Model List Walc
+models_walc <- list(GLM = glm_walc, GLMNET = glmnet_walc, GLMNETTUNING = glmnet_tuning_walc, RPART = rpart_walc, RF = rf_walc, GBM = gbm_walc, XGB = xgboost_walc, NB = nb_walc, KNN=knn_model_Hwalc,SVM=svm_model_Hwalc,CART=cart_model_Hwalc)
+
+# Results
+results_walc <- resamples(models_walc)
+
+summary(results_walc)
+
+# Visual Comparison ROC
+bwplot(results_walc, metric = "ROC")
+dotplot(results_walc, metric = "ROC")
+```

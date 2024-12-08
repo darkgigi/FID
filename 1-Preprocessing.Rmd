@@ -304,7 +304,7 @@ df_long <- df_summary %>%
 ggplot(df_long, aes(x = factor(goout), y = average_consumption, fill = type_of_consumption)) +
   geom_col(position = "dodge") +  # Barras lado a lado
   labs(
-    title = "Media de consumo de alcohol según la frecuencia de salida (Laborables vs Fines de semana)",
+    title = "Media de consumo de alcohol según la frecuencia de salida",
     x = "Frecuencia de salida",
     y = "Media de consumo de alcohol",
     fill = "Tipo de consumo"

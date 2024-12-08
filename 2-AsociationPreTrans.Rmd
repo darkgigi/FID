@@ -6,15 +6,29 @@ no era necesaria) para poder trabajar con un dataset más equilibrado.
 
 ### Asociación
 ```{r}
-install.packages("arules")
 library(arules)
-install.packages("caret")
 library(caret)
-install.packages("FSelector")
 library(FSelector)
+library(arulesViz)
 ```
 
-## Cuando se reorganice el documento, esto hay que subirlo a preprocesamiento :)
+### Lectura de datos
+```{r}
+# Lectura de dataset
+df=read.table("data/student-por.csv",sep=",",header=TRUE)
+
+# Convertir columnas necesarias a factor
+cols_to_factor <- c("school", "sex", "address", "famsize", "Pstatus", "Medu", "Fedu", "Mjob", 
+                    "Fjob", "reason", "guardian", "traveltime", "studytime" ,"famrel"
+                    , "freetime", "goout", "health")
+
+df[cols_to_factor] <- lapply(df[cols_to_factor], as.factor)
+
+cols_to_boolean <- c("schoolsup", "famsup", "paid", "activities", "nursery", "higher", "internet", "romantic")
+
+df[cols_to_boolean] <- lapply(df[cols_to_boolean], function(x) x == "yes")
+```
+
 ```{r}
 # Descartar la columna 'Dalc' del dataset
 df_association <- df %>%
@@ -50,8 +64,6 @@ inspect(head(rules_sorted, 10))
 ```
 
 ```{r}
-install.packages("arulesViz")
-library(arulesViz)
 
 # Visualización básica
 plot(rules_sorted)

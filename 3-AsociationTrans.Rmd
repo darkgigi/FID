@@ -1,3 +1,20 @@
+# Lectura de datos
+```{r}
+# Lectura de dataset
+df=read.table("data/student-por.csv",sep=",",header=TRUE)
+
+# Convertir columnas necesarias a factor
+cols_to_factor <- c("school", "sex", "address", "famsize", "Pstatus", "Medu", "Fedu", "Mjob", 
+                    "Fjob", "reason", "guardian", "traveltime", "studytime" ,"famrel"
+                    , "freetime", "goout", "health")
+
+df[cols_to_factor] <- lapply(df[cols_to_factor], as.factor)
+
+cols_to_boolean <- c("schoolsup", "famsup", "paid", "activities", "nursery", "higher", "internet", "romantic")
+
+df[cols_to_boolean] <- lapply(df[cols_to_boolean], function(x) x == "yes")
+```
+
 ## Transformación
 Como se puede observar, el dataset está desbalanceado, por lo que se nos plantean varias casuísticas, primeramente se han realizado algunas transoformaciones,
 como la creación de dos nuevas columnas, una para el consumo de alcohol diario (Dalc) y otra para el consumo de alcohol durante los fin de semanas (Walc). En estas

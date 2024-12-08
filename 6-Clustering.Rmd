@@ -15,11 +15,8 @@ cols_to_factor <- c("school", "sex", "address", "famsize", "Pstatus", "Medu", "F
                     , "freetime", "goout", "health")
 
 df[cols_to_factor] <- lapply(df[cols_to_factor], as.factor)
-
 cols_to_boolean <- c("schoolsup", "famsup", "paid", "activities", "nursery", "higher", "internet", "romantic")
-
 df[cols_to_boolean] <- lapply(df[cols_to_boolean], function(x) x == "yes")
-
 data <- df
 
 # 2. Seleccionar las variables a tener en cuenta en la clusterización. Hemos elegido las variables que hemos considerado más interesantes relativas a las notas obtenidas y al consumo de alcohol de los alumnos
@@ -53,7 +50,7 @@ fviz_nbclust(variables_scaled, FUNcluster = function(x, k) kmeans(x, centers = k
   geom_vline(xintercept = 3, linetype = 2) +
   labs(title = "Método del Codo para Determinar el Número de Clústeres")
 
-# 8. Aplicar K-means con k = 3 (modificar si se detecta otro valor óptimo)
+# 8. Aplicar K-means con k = 3
 set.seed(42) # Para reproducibilidad
 kmeans_result <- kmeans(variables_scaled, centers = 3, nstart = 25)
 

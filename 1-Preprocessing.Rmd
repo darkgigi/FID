@@ -193,7 +193,7 @@ ggplot(df_summary, aes(x = studytime, y = media_consumo, fill = studytime)) +
 
 
 ```
-###Media de consumo de alcohol en función de la salud de los estudiantes (entre semana y fin de semana)
+### Media de consumo de alcohol en función de si los padres están separados o no (entre semana y fin de semana)
 ```{r}
 df %>%
   group_by(Pstatus) %>%

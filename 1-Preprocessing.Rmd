@@ -58,9 +58,10 @@ print(str(df))
 ```{r}
 library(ggplot2)
 library(tidyr)
+library(dplyr)
 ```
 
-## Histograma de consumo de alcohol entre semana vs fin de semana
+### Histograma de consumo de alcohol entre semana vs fin de semana
 ```{r}	
 ggplot() +
   geom_histogram(data = df_long, aes(x = consumption, fill = period), position = position_dodge(), stat = "count", alpha = 0.5, bins = 10) +
@@ -99,8 +100,9 @@ ggplot(df_count, aes(x = "", y = prop, fill = interaction(Dalc, Walc))) +
   theme_void()  
 
 ```
+### Media de consumo según la nota final
 ```{r}
-# Media de consumo según la nota final
+
 df %>%
   filter(!is.na(G3) & !is.na(Dalc) & !is.na(Walc)) %>%
   group_by(G3) %>%
@@ -121,8 +123,8 @@ df %>%
 
 ```
 
+### Porcentaje de personas perteneciente a cada grupo de consumo según el sexo para Dalc y Walc
 ```{r}
-# Porcentaje de personas perteneciente a cada grupo de consumo según el sexo para Dalc y Walk
 df_long %>%
   group_by(sex, period, consumption) %>%
   summarise(count = n()) %>%
@@ -172,26 +174,18 @@ df %>%
 
 ### Media de consumo según el tiempo de estudio (entre semana vs fin de semana)
 ```{r}
-# Asegúrate de que las variables 'studytime' y 'Dalc' están en el formato adecuado
 df$studytime <- factor(df$studytime, levels = c("1", "2", "3", "4"))
 df$Dalc <- as.numeric(as.character(df$Dalc)) # Si 'Dalc' es un factor, convertirlo a numérico
 
-# Eliminar filas con valores NA en las columnas de interés
 df_clean <- df %>%
   filter(!is.na(Dalc) & !is.na(studytime))
-
-# Agrupar los datos por el tiempo de estudio y calcular la media del consumo de alcohol
-library(dplyr)
 
 df_summary <- df_clean %>%
   group_by(studytime) %>%
   summarise(media_consumo = mean(Dalc, na.rm = TRUE))
 
-# Visualización con ggplot2
-library(ggplot2)
-
 ggplot(df_summary, aes(x = studytime, y = media_consumo, fill = studytime)) +
-  geom_col(show.legend = FALSE) +  # Usar geom_col() para barras con valores pre-calculados
+  geom_col(show.legend = FALSE) +  
   labs(title = "Media de consumo de alcohol según el tiempo de estudio",
        x = "Tiempo de estudio",
        y = "Media de consumo de alcohol") +
@@ -201,8 +195,6 @@ ggplot(df_summary, aes(x = studytime, y = media_consumo, fill = studytime)) +
 ```
 ###Media de consumo de alcohol en función de la salud de los estudiantes (entre semana y fin de semana)
 ```{r}
-library(ggplot2)
-library(tidyr)
 df %>%
   group_by(Pstatus) %>%
   summarise(mean_Dalc = mean(Dalc), mean_Walc = mean(Walc)) %>%
@@ -218,8 +210,6 @@ df %>%
 
 ### Media de consumo de alcohol según la relación familiar
 ```{r}
-library(ggplot2)
-library(dplyr)
 
 famrel_consumption <- df %>%
   group_by(famrel) %>%
@@ -229,7 +219,6 @@ famrel_consumption <- df %>%
   ) %>%
   pivot_longer(cols = c(avg_Dalc, avg_Walc), names_to = "TipoConsumo", values_to = "MediaConsumo")
 
-# Crear el gráfico
 ggplot(famrel_consumption, aes(x = factor(famrel), y = MediaConsumo, fill = TipoConsumo)) +
   geom_bar(stat = "identity", position = "dodge", color = "black") +
   scale_fill_manual(values = c("avg_Dalc" = "blue", "avg_Walc" = "red"), 
@@ -250,26 +239,18 @@ ggplot(famrel_consumption, aes(x = factor(famrel), y = MediaConsumo, fill = Tipo
 
 ### Media de consumo según el tiempo libre (entre semana vs fin de semana)
 ```{r}
-# Asegúrate de que 'freetime' y 'Dalc' están en el formato adecuado
 df$freetime <- factor(df$freetime, levels = c("1", "2", "3", "4", "5"))
 df$Dalc <- as.numeric(as.character(df$Dalc))  # Si 'Dalc' es un factor, convertirlo a numérico
 
-# Eliminar filas con valores NA en las columnas de interés
 df_clean <- df %>%
   filter(!is.na(Dalc) & !is.na(freetime))
-
-# Agrupar los datos por el tiempo libre y calcular la media del consumo de alcohol
-library(dplyr)
 
 df_summary_freetime <- df_clean %>%
   group_by(freetime) %>%
   summarise(media_consumo = mean(Dalc, na.rm = TRUE))
 
-# Visualización con ggplot2
-library(ggplot2)
-
 ggplot(df_summary_freetime, aes(x = freetime, y = media_consumo, fill = freetime)) +
-  geom_col(show.legend = FALSE) +  # Usar geom_col() para barras con valores pre-calculados
+  geom_col(show.legend = FALSE) + 
   labs(title = "Media de consumo de alcohol según el tiempo libre",
        x = "Tiempo libre",
        y = "Media de consumo de alcohol") +
@@ -280,11 +261,6 @@ ggplot(df_summary_freetime, aes(x = freetime, y = media_consumo, fill = freetime
 
 ### Consumo de alcohol en función de la frecuencia de salida (entre semana vs fin de semana)
 ```{r}
-library(dplyr)
-library(tidyr)
-library(ggplot2)
-
-# Agrupar los datos por la frecuencia de salida y calcular las medias
 df_summary <- df %>%
   group_by(goout) %>%
   summarise(
@@ -292,7 +268,6 @@ df_summary <- df %>%
     average_consumption_walc = mean(Walc, na.rm = TRUE)
   )
 
-# Transformar los datos al formato largo
 df_long <- df_summary %>%
   pivot_longer(
     cols = c(average_consumption_dalc, average_consumption_walc),
@@ -300,9 +275,8 @@ df_long <- df_summary %>%
     values_to = "average_consumption"
   )
 
-# Visualización con ggplot2
 ggplot(df_long, aes(x = factor(goout), y = average_consumption, fill = type_of_consumption)) +
-  geom_col(position = "dodge") +  # Barras lado a lado
+  geom_col(position = "dodge") +
   labs(
     title = "Media de consumo de alcohol según la frecuencia de salida",
     x = "Frecuencia de salida",
@@ -318,14 +292,8 @@ ggplot(df_long, aes(x = factor(goout), y = average_consumption, fill = type_of_c
   theme_minimal()
 ```
 
-```{r}
 ### Media de consumo según la edad (entre semana vs fin de semana)
-
-library(dplyr)
-library(tidyr)
-library(ggplot2)
-
-# Agrupar los datos por la edad del alumno y calcular las medias
+```{r}
 df_summary <- df %>%
   group_by(age) %>%
   summarise(
@@ -333,7 +301,6 @@ df_summary <- df %>%
     average_consumption_walc = mean(Walc, na.rm = TRUE)
   )
 
-# Transformar los datos al formato largo
 df_long <- df_summary %>%
   pivot_longer(
     cols = c(average_consumption_dalc, average_consumption_walc),
@@ -341,9 +308,8 @@ df_long <- df_summary %>%
     values_to = "average_consumption"
   )
 
-# Visualización con ggplot2
 ggplot(df_long, aes(x = factor(age), y = average_consumption, fill = type_of_consumption)) +
-  geom_col(position = "dodge") +  # Barras lado a lado
+  geom_col(position = "dodge") +
   labs(
     title = "Media de consumo de alcohol según la edad (Laborables vs Fines de semana)",
     x = "Edad del alumno",
@@ -358,21 +324,19 @@ ggplot(df_long, aes(x = factor(age), y = average_consumption, fill = type_of_con
   ) +
   theme_minimal()
 ```
+
 ### Media de consumo según el tiempo libre y el tiempo de estudio
 ```{r}
-# Asegurarse de que las columnas Walc y Dalc sean numéricas
 df_clean$Walc <- as.numeric(as.character(df_clean$Walc))
 df_clean$Dalc <- as.numeric(as.character(df_clean$Dalc))
 
-# Calcular la media de consumo de alcohol entre semana (Dalc) y fines de semana (Walc)
 df_summary <- df_clean %>%
   group_by(studytime, freetime) %>%
   summarise(
-    media_consumo_semanal = mean(Dalc, na.rm = TRUE),  # Media de consumo entre semana
-    media_consumo_finsemana = mean(Walc, na.rm = TRUE)  # Media de consumo fines de semana
+    media_consumo_semanal = mean(Dalc, na.rm = TRUE), 
+    media_consumo_finsemana = mean(Walc, na.rm = TRUE)  
   )
 
-# Verificar la distribución de los valores de Walc y Dalc
 summary(df_summary$media_consumo_semanal)
 summary(df_summary$media_consumo_finsemana)
 

@@ -1,9 +1,3 @@
----
-title: "School_alcohol_consumption"
-output: html_document
-date: "2024-11-10"
----
-
 ### Lectura de datos
 
 ```{r}
@@ -12,7 +6,6 @@ library(caret)
 
 df=read.table("data/student-por.csv",sep=",",header=TRUE)
 
-# Convertir columnas necesarias a factor
 cols_to_factor <- c("school", "sex", "address", "famsize", "Pstatus", "Medu", "Fedu", "Mjob", 
                     "Fjob", "reason", "guardian", "traveltime", "studytime" ,"famrel"
                     , "freetime", "goout", "health", "Dalc", "Walc")
@@ -38,13 +31,12 @@ dfDalc <- select(df, -Walc)
 dfDalc$Dalc <- as.numeric(dfDalc$Dalc)
 num_vars <- dfDalc %>% select_if(is.numeric)
 
-# Correlación con la variable objetivo (ejemplo: Dalc)
+# Correlación con la variable objetivo
 correlation <- cor(num_vars, dfDalc$Dalc)
 print(correlation)
 # Seleccionar variables con alta correlación (positiva o negativa)
 selected_vars <- which(abs(correlation) > 0.15)
 
-# Mostrar las variables seleccionadas
 print(selected_vars)
 ```
 
@@ -52,7 +44,6 @@ print(selected_vars)
 G1, G2, G3, absences
 
 ```{r}
-# Prueba Chi-cuadrado
 chi_results <- sapply(dfDalc %>% select_if(is.factor), function(x) {
 chisq.test(table(x, dfDalc$Dalc))$p.value
 })
@@ -60,7 +51,6 @@ chisq.test(table(x, dfDalc$Dalc))$p.value
 # Seleccionar variables significativas (p < 0.05)
 selected_categorical_vars <- names(which(chi_results < 0.05))
 
-# Mostrar las variables seleccionadas
 print(selected_categorical_vars)
 ```
 
@@ -68,7 +58,6 @@ print(selected_categorical_vars)
 sex, guardian, studytime, famrel, freetime, goout
 
 ```{r}
-# Combinar variables seleccionadas
 selected_vars <- c("G1", "G2", "G3", "absences", "sex", "guardian", "studytime", "famrel", "freetime", "goout")
 dalc_formula <- as.formula(paste("Dalc ~", paste(selected_vars, collapse = " + ")))
 ```
@@ -101,7 +90,6 @@ knn_model <- train(dalc_formula,            # Fórmula
                    trControl = control,    # Configuración de k-fold
                    tuneGrid = expand.grid(k = 1:10))  # Ajuste de k entre 1 y 10
 
-# Mostrar el mejor modelo
 print(knn_model)
 
 # Calcular la importancia de las variables
@@ -113,7 +101,7 @@ print(feature_importance)
 # Hacer predicciones en los datos de prueba
 predictions <- predict(knn_model, testDataNormalized)
 
-# Evaluar el modelo usando la matriz de confusión
+# Evaluar el modelo
 confusionMatrix(predictions, testData$Dalc)
 ```
 
@@ -121,10 +109,9 @@ confusionMatrix(predictions, testData$Dalc)
 ```{r}
 # Entrenar el modelo SVM radial con validación cruzada
 set.seed(42)
-# Definir un grid de hiperparámetros
+
 grid <- expand.grid(C = c(0.1, 1, 10), sigma = c(0.01, 0.05, 0.1))
 
-# Entrenar el modelo SVM radial con ajuste manual
 set.seed(42)
 svm_model <- train(dalc_formula, 
                    data = trainDataNormalized, 
@@ -132,7 +119,6 @@ svm_model <- train(dalc_formula,
                    trControl = control, 
                    tuneGrid = grid)
 
-# Mostrar el mejor modelo
 print(svm_model)
 
 
@@ -157,7 +143,6 @@ cart_model <- train(dalc_formula,            # Fórmula
                     trControl = control,    # Configuración de k-fold
                     tuneLength = 10)  # Ajuste de hiperparámetros
 
-# Mostrar el mejor modelo
 print(cart_model)
 
 # Hacer predicciones en los datos de prueba

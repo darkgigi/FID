@@ -7,10 +7,10 @@ library(tidyr)
 library(arules)
 library(FSelector)
 library(arulesViz)
+
 # Lectura de dataset
 df=read.table("data/student-por.csv",sep=",",header=TRUE)
 
-# Convertir columnas necesarias a factor
 cols_to_factor <- c("school", "sex", "address", "famsize", "Pstatus", "Medu", "Fedu", "Mjob", 
                     "Fjob", "reason", "guardian", "traveltime", "studytime" ,"famrel"
                     , "freetime", "goout", "health")
@@ -38,7 +38,6 @@ df <- df %>%
 df$Hdalc <- as.integer(df$Hdalc)
 df$Hwalc <- as.integer(df$Hwalc)
 
-# Printea cuantos valores hay de cada clase
 table(df$Hdalc)
 table(df$Hwalc)
 ```
@@ -64,18 +63,14 @@ rules <- apriori(df_asociation_hdalc,
                  parameter = list(supp = 0.05, conf = 0.7),
                  appearance = list(rhs = paste("Hdalc=", c("1"), sep="")))
 
-# Inspeccionar las primeras reglas generadas
 inspect(head(rules))
 ```  
 
 ```{r}
-# Filtrar por elevación
 rules_lift <- subset(rules, lift > 1.2)
 
-# Ordenar por confianza
 rules_sorted <- sort(rules_lift, by = "confidence", decreasing = TRUE)
 
-# Inspeccionar reglas filtradas y ordenadas
 inspect(head(rules_sorted, 10))
 
 ```
@@ -97,18 +92,14 @@ rules <- apriori(df_asociation_hwalc,
                  parameter = list(supp = 0.05, conf = 0.8),
                  appearance = list(rhs = paste("Hwalc=", c("1"), sep="")))
 
-# Inspeccionar las primeras reglas generadas
 inspect(head(rules))
 ```  
 
 ```{r}
-# Filtrar por elevación
 rules_lift <- subset(rules, lift > 1.2)
 
-# Ordenar por confianza
 rules_sorted <- sort(rules_lift, by = "confidence", decreasing = TRUE)
 
-# Inspeccionar reglas filtradas y ordenadas
 inspect(head(rules_sorted, 10))
 
 ```

@@ -1,8 +1,3 @@
----
-title: "School_alcohol_consumption"
-output: html_document
-date: "2024-11-10"
----
 # Consumo de alcohol en estudiantes
 
 Con este estudio, el objetivo que pretendemos es analizar el consumo de alcohol en estudiantes

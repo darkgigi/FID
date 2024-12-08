@@ -9,7 +9,6 @@ library(pROC)
 # Lectura de dataset
 df=read.table("data/student-por.csv",sep=",",header=TRUE)
 
-# Convertir columnas necesarias a factor
 cols_to_factor <- c("school", "sex", "address", "famsize", "Pstatus", "Medu", "Fedu", "Mjob", 
                     "Fjob", "reason", "guardian", "traveltime", "studytime" ,"famrel"
                     , "freetime", "goout", "health")
@@ -29,7 +28,6 @@ df <- df %>%
 df <- df %>%
   select(-Dalc, -Walc)
 
-# Printea cuantos valores hay de cada clase
 table(df$Hdalc)
 table(df$Hwalc)
 ```
@@ -117,13 +115,12 @@ print(nb_dalc)
 print(nb_walc)
 ```
 
-###KNN
-
 ```{r}
+# KNN
 set.seed(42)
-knn_model_Hdalc <- train(Hdalc ~ ., data = df, method = "knn", trControl = train_control, tuneGrid = expand.grid(k = 1:10))  # Ajuste de k entre 1 y 10
-knn_model_Hwalc <- train(Hwalc ~ ., data = df, method = "knn", trControl = train_control, tuneGrid = expand.grid(k = 1:10))  # Ajuste de k 
-# Mostrar el mejor modelo
+knn_model_Hdalc <- train(Hdalc ~ ., data = df, method = "knn", trControl = train_control, tuneGrid = expand.grid(k = 1:10))  
+knn_model_Hwalc <- train(Hwalc ~ ., data = df, method = "knn", trControl = train_control, tuneGrid = expand.grid(k = 1:10)) 
+
 print(knn_model_Hdalc)
 print(knn_model_Hwalc)
 ```
@@ -133,60 +130,54 @@ print(knn_model_Hwalc)
 ```{r}
 # Entrenar el modelo SVM radial con validación cruzada
 set.seed(42)
-# Definir un grid de hiperparámetros
+
 grid <- expand.grid(C = c(0.1, 1, 10), sigma = c(0.01, 0.05, 0.1))
 
-# Entrenar el modelo SVM radial con ajuste manual
+
 set.seed(42)
 svm_model_Hdalc <- train(Hdalc ~ ., data = df, method = "svmRadial", trControl = train_control,tuneGrid = grid)
 svm_model_Hwalc <- train(Hwalc ~ ., data = df, method = "svmRadial", trControl = train_control,tuneGrid = grid)
 
-# Mostrar el mejor modelo
 print(svm_model_Hdalc)
 print(svm_model_Hwalc)
-
 
 ```
 
 ###CART
 
 ```{r}
-# Entrenar el modelo SVM radial con validación cruzada
+
 set.seed(42)
-cart_model_Hdalc <- train(Hdalc ~ ., data = df, method = "rpart", trControl = train_control,   # Configuración de k-fold
-                    tuneLength = 10)  # Ajuste de hiperparámetros
-cart_model_Hwalc <- train(Hwalc ~ ., data = df, method = "rpart", trControl = train_control,   # Configuración de k-fold
-                    tuneLength = 10)  # Ajuste de hiperparámetros
-# Mostrar el mejor modelo
+cart_model_Hdalc <- train(Hdalc ~ ., data = df, method = "rpart", trControl = train_control,
+                    tuneLength = 10)  
+cart_model_Hwalc <- train(Hwalc ~ ., data = df, method = "rpart", trControl = train_control,
+                    tuneLength = 10)  
+
 print(cart_model_Hdalc)
 print(cart_model_Hwalc)
 
 ```
 
 ```{r}
-# Model List Dalc
+# Dalc
 models_dalc <- list(GLM = glm_dalc, GLMNET = glmnet_dalc, GLMNETTUNING = glmnet_tuning_dalc, RPART = rpart_dalc, RF = rf_dalc, GBM = gbm_dalc, XGB = xgboost_dalc, NB = nb_dalc, KNN=knn_model_Hdalc,SVM=svm_model_Hdalc,CART=cart_model_Hdalc)
 
-# Results
 results_dalc <- resamples(models_dalc)
 
 summary(results_dalc)
 
-# Visual Comparison ROC
 bwplot(results_dalc, metric = "ROC")
 dotplot(results_dalc, metric = "ROC")
 ```
 
 ```{r}
-# Model List Walc
+# Walc
 models_walc <- list(GLM = glm_walc, GLMNET = glmnet_walc, GLMNETTUNING = glmnet_tuning_walc, RPART = rpart_walc, RF = rf_walc, GBM = gbm_walc, XGB = xgboost_walc, NB = nb_walc, KNN=knn_model_Hwalc,SVM=svm_model_Hwalc,CART=cart_model_Hwalc)
 
-# Results
 results_walc <- resamples(models_walc)
 
 summary(results_walc)
 
-# Visual Comparison ROC
 bwplot(results_walc, metric = "ROC")
 dotplot(results_walc, metric = "ROC")
 ```

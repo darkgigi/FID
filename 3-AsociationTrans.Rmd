@@ -23,9 +23,15 @@ df[cols_to_boolean] <- lapply(df[cols_to_boolean], function(x) x == "yes")
 ```
 
 ## Transformación
-Como se puede observar, el dataset está desbalanceado, por lo que se nos plantean varias casuísticas, primeramente se han realizado algunas transoformaciones,
-como la creación de dos nuevas columnas, una para el consumo de alcohol diario (Dalc) y otra para el consumo de alcohol durante los fin de semanas (Walc). En estas
-nuevas columnas se han agrupado las diferentes frecuencias de consumo, siendo True si se consume entre 3,4 o 5, o False si está entre 1 y 2 entre semana y,  True si se consume entre 4 o 5 y False si está entre 1, 2 y 3 en fin de semana .
+Como se puede observar, el dataset está desbalanceado, por lo que se nos plantean varias casuísticas, primeramente se han realizado algunas transformaciones,
+como la creación de dos nuevas columnas, una para el consumo de alcohol diario a la que se ha denominado Hdalc y otra para el consumo de alcohol durante los 
+fines de semanas a la que se ha denominado Hwalc. En estas nuevas columnas se han agrupado las diferentes frecuencias de consumo, de la siguiente manera:
++ Entre semana (Hdalc):
+  - True: si se consume entre 2, 3, 4 y 5.
+  - False: si se consume entre 1.
++ Fines de semana (Hwalc):
+  - True: si se consume entre 3, 4 y 5.
+  - False: si se consume entre 1 y 2.
 
 ```{r}
 df <- df %>%

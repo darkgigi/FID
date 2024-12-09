@@ -53,7 +53,7 @@ Tras realizar la transformación, volvemos a realizar la minería de datos a pri
 ### Asociación
 #### Consumo de alcohol entre semana
 ```{r}
-# Descartar la columna 'Dalc' del dataset para Hwalc, y descartar la columna 'Hwalc' del dataset para Hdalc
+# Descartar la columna 'Hdalc' del dataset para Hwalc, y descartar la columna 'Hwalc' del dataset para Hdalc
 df_association <- df %>%
   mutate(Hdalc = as.factor(Hdalc),
          Hwalc = as.factor(Hwalc))

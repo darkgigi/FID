@@ -44,6 +44,12 @@ train_control <- trainControl(method = "cv", number = k, savePredictions = TRUE,
 glm_dalc <- train(Hdalc ~ ., data = df, method = "glm", trControl = train_control, family = "binomial")
 glm_walc <- train(Hwalc ~ ., data = df, method = "glm", trControl = train_control, family = "binomial")
 
+var_glm_dalc <- varImp(glm_dalc)
+var_glm_walc <- varImp(glm_walc)
+
+print(var_glm_dalc)
+print(var_glm_walc)
+
 print(glm_dalc)
 print(glm_walc)
 
@@ -57,6 +63,12 @@ confusionMatrix(glm_walc)
 glmnet_dalc <- train(Hdalc ~ ., data = df, method = "glmnet", trControl = train_control, family = "binomial")
 glmnet_walc <- train(Hwalc ~ ., data = df, method = "glmnet", trControl = train_control, family = "binomial")
 
+var_glmnet_walc <- varImp(glmnet_walc)
+var_glmnet_dalc <- varImp(glmnet_dalc)
+
+print(var_glm_dalc)
+print(var_glm_walc)
+
 print(glmnet_dalc)
 print(glmnet_walc)
 
@@ -65,6 +77,12 @@ print(glmnet_walc)
 ```{r}
 glmnet_tuning_dalc <- train(Hdalc ~ ., data = df, method = "glmnet", trControl = train_control, family = "binomial", tuneGrid = expand.grid(alpha = 0:1, lambda = seq(0.001, 0.1, length = 10)))
 glmnet_tuning_walc <- train(Hwalc ~ ., data = df, method = "glmnet", trControl = train_control, family = "binomial", tuneGrid = expand.grid(alpha = 0:1, lambda = seq(0.001, 0.1, length = 10)))
+
+var_glmnet_tuning_walc <- varImp(glmnet_tuning_walc)
+var_glmnet_tuning_dalc <- varImp(glmnet_tuning_dalc)
+
+print(var_glm_dalc)
+print(var_glm_walc)
 
 print(glmnet_tuning_dalc)
 print(glmnet_tuning_walc)
@@ -75,6 +93,12 @@ print(glmnet_tuning_walc)
 rpart_dalc <- train(Hdalc ~ ., data = df, method = "rpart", trControl = train_control)
 rpart_walc <- train(Hwalc ~ ., data = df, method = "rpart", trControl = train_control)
 
+var_rpart_walc <- varImp(rpart_walc)
+var_rpart_dalc <- varImp(rpart_dalc)
+
+print(var_glm_dalc)
+print(var_glm_walc)
+
 print(rpart_dalc)
 print(rpart_walc)
 ```
@@ -84,6 +108,12 @@ print(rpart_walc)
 rf_dalc <- train(Hdalc ~ ., data = df, method = "rf", trControl = train_control)
 rf_walc <- train(Hwalc ~ ., data = df, method = "rf", trControl = train_control)
 
+var_rf_walc <- varImp(rf_walc)
+var_rf_dalc <- varImp(rf_dalc)
+
+print(var_rf_walc)
+print(var_rf_dalc)
+
 print(rf_dalc)
 print(rf_walc)
 ```
@@ -92,6 +122,7 @@ print(rf_walc)
 # GBM
 gbm_dalc <- train(Hdalc ~ ., data = df, method = "gbm", trControl = train_control)
 gbm_walc <- train(Hwalc ~ ., data = df, method = "gbm", trControl = train_control)
+
 
 print(gbm_dalc)
 print(gbm_walc)
@@ -111,6 +142,12 @@ print(xgboost_walc)
 nb_dalc <- train(Hdalc ~ ., data = df, method = "nb", trControl = train_control)
 nb_walc <- train(Hwalc ~ ., data = df, method = "nb", trControl = train_control)
 
+var_nb_walc <- varImp(nb_walc)
+var_nb_dalc <- varImp(nb_dalc)
+
+print(var_nb_dalc)
+print(var_nb_walc)
+
 print(nb_dalc)
 print(nb_walc)
 ```
@@ -118,9 +155,17 @@ print(nb_walc)
 ```{r}
 # KNN
 set.seed(42)
+
 knn_model_Hdalc <- train(Hdalc ~ ., data = df, method = "knn", trControl = train_control, tuneGrid = expand.grid(k = 1:10))  
 knn_model_Hwalc <- train(Hwalc ~ ., data = df, method = "knn", trControl = train_control, tuneGrid = expand.grid(k = 1:10)) 
 
+var_knn_model_Hwalc <- varImp(knn_model_Hwalc)
+var_knn_model_Hdalc <- varImp(knn_model_Hdalc)
+
+print(var_knn_model_Hdalc)
+print(var_knn_model_Hwalc)
+
+# Mostrar el mejor modelo
 print(knn_model_Hdalc)
 print(knn_model_Hwalc)
 ```
@@ -133,11 +178,17 @@ set.seed(42)
 
 grid <- expand.grid(C = c(0.1, 1, 10), sigma = c(0.01, 0.05, 0.1))
 
-
 set.seed(42)
 svm_model_Hdalc <- train(Hdalc ~ ., data = df, method = "svmRadial", trControl = train_control,tuneGrid = grid)
 svm_model_Hwalc <- train(Hwalc ~ ., data = df, method = "svmRadial", trControl = train_control,tuneGrid = grid)
 
+var_svm_model_Hwalc <- varImp(svm_model_Hwalc)
+var_svm_model_Hdalc <- varImp(svm_model_Hdalc)
+
+print(var_svm_model_Hdalc)
+print(var_svm_model_Hwalc)
+
+# Mostrar el mejor modelo
 print(svm_model_Hdalc)
 print(svm_model_Hwalc)
 
@@ -153,6 +204,13 @@ cart_model_Hdalc <- train(Hdalc ~ ., data = df, method = "rpart", trControl = tr
 cart_model_Hwalc <- train(Hwalc ~ ., data = df, method = "rpart", trControl = train_control,
                     tuneLength = 10)  
 
+var_cart_model_Hwalc <- varImp(cart_model_Hwalc)
+var_cart_model_Hdalc <- varImp(cart_model_Hdalc)
+
+print(var_cart_model_Hdalc)
+print(var_cart_model_Hwalc)
+
+# Mostrar el mejor modelo
 print(cart_model_Hdalc)
 print(cart_model_Hwalc)
 
@@ -180,4 +238,75 @@ summary(results_walc)
 
 bwplot(results_walc, metric = "ROC")
 dotplot(results_walc, metric = "ROC")
+```
+
+```{r}
+process_varImp_safe <- function(varImp_result, model_name, target_name) {
+  if (!is.null(varImp_result$importance) && nrow(varImp_result$importance) > 0) {
+    # Calcular una medida unificada si hay múltiples columnas
+    if (ncol(varImp_result$importance) > 1) {
+      importance_overall <- rowMeans(varImp_result$importance)
+    } else {
+      importance_overall <- varImp_result$importance[, 1]
+    }
+    return(data.frame(
+      Variable = rownames(varImp_result$importance),
+      Importance = importance_overall,
+      Model = model_name,
+      Target = target_name,
+      stringsAsFactors = FALSE
+    ))
+  } else {
+    # Retorna un data frame vacío si no hay datos
+    return(data.frame(
+      Variable = character(0),
+      Importance = numeric(0),
+      Model = model_name,
+      Target = character(0),
+      stringsAsFactors = FALSE
+    ))
+  }
+}
+# Procesar los resultados de los algoritmos
+var_knn_dalc_df <- process_varImp_safe(var_knn_model_Hdalc, "KNN", "Hdalc")
+var_knn_walc_df <- process_varImp_safe(var_knn_model_Hwalc, "KNN", "Hwalc")
+
+var_glm_dalc_df <- process_varImp_safe(var_glm_dalc, "GLM", "Hdalc")
+var_glm_walc_df <- process_varImp_safe(var_glm_walc, "GLM", "Hwalc")
+
+var_rf_dalc_df <- process_varImp_safe(var_rf_dalc, "Random Forest", "Hdalc")
+var_rf_walc_df <- process_varImp_safe(var_rf_walc, "Random Forest", "Hwalc")
+
+var_cart_dalc_df <- process_varImp_safe(var_cart_model_Hdalc, "CART", "Hdalc")
+var_cart_walc_df <- process_varImp_safe(var_cart_model_Hwalc, "CART", "Hwalc")
+
+# Combinar los resultados en un único data frame
+var_combined <- rbind(
+  var_knn_dalc_df, var_knn_walc_df,
+  var_glm_dalc_df, var_rf_dalc_df,
+  var_glm_walc_df,var_rf_walc_df,
+  var_cart_dalc_df, var_cart_walc_df
+)
+library(dplyr)
+library(ggplot2)
+
+# Seleccionar las 5 variables más importantes por modelo y objetivo
+top_5_vars <- var_combined %>%
+  group_by(Model, Target) %>%
+  top_n(5, Importance) %>%
+  arrange(Model, Target, desc(Importance))
+
+# Crear el gráfico
+ggplot(top_5_vars, aes(x = reorder(Variable, Importance), y = Importance, color = Target)) +
+  geom_segment(aes(x = Variable, xend = Variable, y = 0, yend = Importance), size = 1) +
+  geom_point(size = 4) +
+  coord_flip() +
+  facet_wrap(~ Model, scales = "free_y") +
+  labs(title = "Top 5 Variables más Importantes por Modelo y Objetivo",
+       x = "Variables",
+       y = "Importancia",
+       color = "Variable Objetivo") +
+  theme_minimal()
+
+
 ```

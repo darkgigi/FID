@@ -1,0 +1,1148 @@
+
+```{r}
+library(dplyr)
+library(caret)
+library(pROC)
+```
+
+```{r}
+
+# Lectura de dataset
+df=read.table("data/student-por.csv",sep=",",header=TRUE)
+
+cols_to_factor <- c("school", "sex", "address", "famsize", "Pstatus", "Medu", "Fedu", "Mjob", 
+                    "Fjob", "reason", "guardian", "traveltime", "studytime" ,"famrel"
+                    , "freetime", "goout", "health")
+
+df[cols_to_factor] <- lapply(df[cols_to_factor], as.factor)
+
+cols_to_boolean <- c("schoolsup", "famsup", "paid", "activities", "nursery", "higher", "internet", "romantic")
+
+df[cols_to_boolean] <- lapply(df[cols_to_boolean], function(x) x == "yes")
+
+df <- df %>%
+  mutate(
+    Hdalc = factor(if_else(Dalc >= 2, "Yes", "No"), levels = c("No", "Yes")),
+    Hwalc = factor(if_else(Walc >= 3, "Yes", "No"), levels = c("No", "Yes"))
+  )
+
+df <- df %>%
+  select(-Dalc, -Walc)
+
+table(df$Hdalc)
+table(df$Hwalc)
+```
+
+```{r}
+# K-fold cross validation
+set.seed(123)
+k = 5
+train_control <- trainControl(method = "cv", number = k, savePredictions = TRUE, classProbs = TRUE, summaryFunction = twoClassSummary)
+```
+## CON ALGORITMO DE COLONIA DE HORMIGAS
+
+## ALGORITMO GLM
+```{r}
+library(caret)
+library(pROC)
+library(dplyr)
+
+# Configuración inicial de ACO
+n_ants <- 10         # Número de hormigas
+n_iterations <- 20   # Número de iteraciones
+rho <- 0.5           # Tasa de evaporación de feromonas
+alpha <- 1           # Peso de feromonas
+beta <- 2            # Peso heurístico
+
+# Preparar el dataset
+X <- df %>% select(-Hdalc, -Hwalc)  # Variables predictoras
+y_Hdalc <- df$Hdalc                # Variable objetivo Hdalc
+y_Hwalc <- df$Hwalc                # Variable objetivo Hwalc
+n_features <- ncol(X)              # Número de características
+
+# Inicializar feromonas
+pheromones <- rep(1, n_features)
+
+```
+
+```{r}
+# Función objetivo para Hdalc
+fitness_function_Hdalc <- function(selected_features) {
+  selected_cols <- colnames(X)[selected_features == 1]
+  #Se penalizan las soluciones vacías para que no se elijan nunca
+  if (length(selected_cols) == 0) return(0)
+  X_selected <- X[, selected_cols, drop = FALSE]
+  
+  train_control <- trainControl(method = "cv", number = 5, classProbs = TRUE, summaryFunction = twoClassSummary)
+  model <- train(x = X_selected, y = y_Hdalc, method = "glm", trControl = train_control, family = "binomial", metric = "ROC")
+  
+  return(mean(model$results$ROC))
+}
+
+# Función objetivo para Hwalc
+fitness_function_Hwalc <- function(selected_features) {
+  selected_cols <- colnames(X)[selected_features == 1]
+  if (length(selected_cols) == 0) return(0)
+  X_selected <- X[, selected_cols, drop = FALSE]
+  
+  train_control <- trainControl(method = "cv", number = 5, classProbs = TRUE, summaryFunction = twoClassSummary)
+  model <- train(x = X_selected, y = y_Hwalc, method = "glm", trControl = train_control, family = "binomial", metric = "ROC")
+  
+  return(mean(model$results$ROC))
+}
+```
+
+```{r}
+# Almacenar el mejor resultado para Hdalc
+global_best_solution_Hdalc <- NULL
+global_best_fitness_Hdalc <- -Inf
+
+for (iter in 1:n_iterations) {
+  
+  solutions <- matrix(0, nrow = n_ants, ncol = n_features)
+  fitness <- numeric(n_ants)
+  
+  for (ant in 1:n_ants) {
+    prob <- pheromones / sum(pheromones)
+    solutions[ant, ] <- rbinom(n_features, 1, prob)
+    fitness[ant] <- fitness_function_Hdalc(solutions[ant, ])  # Evaluar solución
+  }
+  
+  best_ant <- which.max(fitness)
+  if (fitness[best_ant] > global_best_fitness_Hdalc) {
+    global_best_fitness_Hdalc <- fitness[best_ant]
+    global_best_solution_Hdalc <- solutions[best_ant, ]
+  }
+  
+  # Actualizar feromonas
+  pheromones <- (1 - rho) * pheromones + rho * solutions[best_ant, ]
+}
+
+# Variables seleccionadas para Hdalc
+best_features_Hdalc <- which(global_best_solution_Hdalc == 1)
+selected_features_Hdalc <- colnames(X)[best_features_Hdalc]
+cat("Mejores características para Hdalc:", selected_features_Hdalc, "\n")
+
+features_hdalc_glm_aco<-selected_features_Hdalc
+
+```
+
+```{r}
+# Almacenar el mejor resultado para Hwalc
+global_best_solution_Hwalc <- NULL
+global_best_fitness_Hwalc <- -Inf
+
+for (iter in 1:n_iterations) {
+  
+  solutions <- matrix(0, nrow = n_ants, ncol = n_features)
+  fitness <- numeric(n_ants)
+  
+  for (ant in 1:n_ants) {
+    prob <- pheromones / sum(pheromones)
+    solutions[ant, ] <- rbinom(n_features, 1, prob)
+    fitness[ant] <- fitness_function_Hwalc(solutions[ant, ])
+  }
+  
+  best_ant <- which.max(fitness)
+  if (fitness[best_ant] > global_best_fitness_Hwalc) {
+    global_best_fitness_Hwalc <- fitness[best_ant]
+    global_best_solution_Hwalc <- solutions[best_ant, ]
+  }
+  
+  # Actualizar feromonas
+  pheromones <- (1 - rho) * pheromones + rho * solutions[best_ant, ]
+}
+
+best_features_Hwalc <- which(global_best_solution_Hwalc == 1)
+selected_features_Hwalc <- colnames(X)[best_features_Hwalc]
+cat("Mejores características para Hwalc:", selected_features_Hwalc, "\n")
+
+features_hwalc_glm_aco<-selected_features_Hwalc
+
+```
+
+```{r}
+# Modelo final para Hdalc
+X_Hdalc <- X[, selected_features_Hdalc, drop = FALSE]
+final_model_Hdalc <- train(x = X_Hdalc, y = y_Hdalc, method = "glm", 
+                           trControl = trainControl(method = "cv", number = 5, classProbs = TRUE, summaryFunction = twoClassSummary), 
+                           metric = "ROC", family = "binomial")
+print(final_model_Hdalc$results$ROC)
+hdalc_glm_aco<-final_model_Hdalc$results$ROC
+
+# Modelo final para Hwalc
+X_Hwalc <- X[, selected_features_Hwalc, drop = FALSE]
+final_model_Hwalc <- train(x = X_Hwalc, y = y_Hwalc, method = "glm", 
+                           trControl = trainControl(method = "cv", number = 5, classProbs = TRUE, summaryFunction = twoClassSummary), 
+                           metric = "ROC", family = "binomial")
+print(final_model_Hwalc)
+
+hwalc_glm_aco<-final_model_Hwalc$results$ROC
+```
+
+## ALGORITMO GBM
+
+```{r}
+
+library(caret)
+library(pROC)
+library(dplyr)
+
+n_ants <- 10         
+n_iterations <- 10   
+rho <- 0.5           
+alpha <- 1           
+beta <- 2           
+
+X <- df %>% select(-Hdalc, -Hwalc)  
+y_Hdalc <- df$Hdalc                
+y_Hwalc <- df$Hwalc                
+n_features <- ncol(X)             
+
+# Inicializar feromonas
+pheromones <- rep(1, n_features)
+
+# Función objetivo para Hdalc
+fitness_function_Hdalc <- function(selected_features) {
+  selected_cols <- colnames(X)[selected_features == 1]
+  if (length(selected_cols) == 0) return(0)  
+  X_selected <- X[, selected_cols, drop = FALSE]
+  
+  train_control <- trainControl(method = "cv", number = 5, classProbs = TRUE, summaryFunction = twoClassSummary)
+  model <- train(Hdalc ~ ., data = df, method = "gbm", trControl = train_control,metric="ROC",verbose=FALSE)
+  
+  return(mean(model$results$ROC))
+}
+
+# Función objetivo para Hwalc
+fitness_function_Hwalc <- function(selected_features) {
+  selected_cols <- colnames(X)[selected_features == 1]
+  if (length(selected_cols) == 0) return(0)
+  X_selected <- X[, selected_cols, drop = FALSE]
+  
+  train_control <- trainControl(method = "cv", number = 5, classProbs = TRUE, summaryFunction = twoClassSummary)
+  model <- train(Hdalc ~ ., data = df, method = "gbm", trControl = train_control,metric="ROC",verbose=FALSE)
+  
+  return(mean(model$results$ROC))
+}
+
+# Almacenar el mejor resultado para Hdalc
+global_best_solution_Hdalc <- NULL
+global_best_fitness_Hdalc <- -Inf
+
+for (iter in 1:n_iterations) {
+  
+  solutions <- matrix(0, nrow = n_ants, ncol = n_features)
+  fitness <- numeric(n_ants)
+  
+  for (ant in 1:n_ants) {
+    prob <- pheromones / sum(pheromones)
+    solutions[ant, ] <- rbinom(n_features, 1, prob)
+    fitness[ant] <- fitness_function_Hdalc(solutions[ant, ])
+  }
+  
+  best_ant <- which.max(fitness)
+  if (fitness[best_ant] > global_best_fitness_Hdalc) {
+    global_best_fitness_Hdalc <- fitness[best_ant]
+    global_best_solution_Hdalc <- solutions[best_ant, ]
+  }
+  
+  pheromones <- (1 - rho) * pheromones + rho * solutions[best_ant, ]
+}
+
+# Variables seleccionadas para Hdalc
+best_features_Hdalc <- which(global_best_solution_Hdalc == 1)
+selected_features_Hdalc <- colnames(X)[best_features_Hdalc]
+cat("Mejores características para Hdalc:", selected_features_Hdalc, "\n")
+
+features_hdalc_glm_aco<-selected_features_Hdalc
+
+# Almacenar el mejor resultado para Hwalc
+global_best_solution_Hwalc <- NULL
+global_best_fitness_Hwalc <- -Inf
+
+for (iter in 1:n_iterations) {
+  
+  solutions <- matrix(0, nrow = n_ants, ncol = n_features)
+  fitness <- numeric(n_ants)
+  
+  for (ant in 1:n_ants) {
+    prob <- pheromones / sum(pheromones)  # Probabilidad basada en feromonas
+    solutions[ant, ] <- rbinom(n_features, 1, prob)  # Selección binaria
+    fitness[ant] <- fitness_function_Hwalc(solutions[ant, ])  # Evaluación de la solución
+  }
+  
+  best_ant <- which.max(fitness)
+  if (fitness[best_ant] > global_best_fitness_Hwalc) {
+    global_best_fitness_Hwalc <- fitness[best_ant]
+    global_best_solution_Hwalc <- solutions[best_ant, ]
+  }
+  
+  # Actualizar feromonas
+  pheromones <- (1 - rho) * pheromones + rho * solutions[best_ant, ]
+}
+
+# Variables seleccionadas para Hwalc
+best_features_Hwalc <- which(global_best_solution_Hwalc == 1)
+selected_features_Hwalc <- colnames(X)[best_features_Hwalc]
+cat("Mejores características para Hwalc:", selected_features_Hwalc, "\n")
+
+features_hwalc_gbm_aco<-selected_features_Hwalc
+
+# Modelo final para Hdalc
+X_Hdalc <- X[, selected_features_Hdalc, drop = FALSE]
+final_model_Hdalc <-model <- train(Hdalc ~ ., data = df, method = "gbm", trControl = train_control,metric="ROC")
+print(final_model_Hdalc)
+
+# Modelo final para Hwalc
+X_Hwalc <- X[, selected_features_Hwalc, drop = FALSE]
+final_model_Hwalc <- model <- train(Hdalc ~ ., data = df, method = "gbm", trControl = train_control,metric="ROC")
+
+print(final_model_Hwalc)
+print(final_model_Hdalc)
+
+best_roc <- max(final_model_Hdalc$results$ROC)
+cat("El ROC final del modelo para Hdalc es:", best_roc, "\n")
+best_roc <- max(final_model_Hwalc$results$ROC)
+cat("El ROC final del modelo para Hwalc es:", best_roc, "\n")
+
+hdalc_glm_aco<-final_model_Hdalc$results$ROC
+hwalc_glm_aco<-final_model_Hwalc$results$ROC
+
+```
+
+## ALGORITMO KNN
+
+```{r}
+library(caret)
+library(pROC)
+library(dplyr)
+
+n_ants <- 10        
+n_iterations <- 20   
+rho <- 0.5           
+alpha <- 1           
+beta <- 2           
+
+# Preparar el dataset
+X <- model.matrix(~ . - 1, data = df %>% select(-Hdalc, -Hwalc))  # Convertir predictores a numérico
+y_Hdalc <- factor(df$Hdalc, levels = c("No", "Yes"))  # Asegurar que la variable objetivo sea un factor
+y_Hwalc <- factor(df$Hwalc, levels = c("No", "Yes"))
+n_features <- ncol(X)  # Número de características
+
+# Inicializar feromonas
+pheromones <- rep(1, n_features)
+
+```
+
+```{r}
+# Función objetivo para Hdalc
+fitness_function_Hdalc <- function(selected_features) {
+  selected_cols <- colnames(X)[selected_features == 1]
+  if (length(selected_cols) == 0) return(0) 
+  
+  X_selected <- as.matrix(X[, selected_cols, drop = FALSE])
+  
+ 
+  train_control <- trainControl(method = "cv", number = 5, classProbs = TRUE, summaryFunction = twoClassSummary)
+  model <- train(
+    x = X_selected,
+    y = y_Hdalc,
+    method = "knn",
+    trControl = train_control,
+    metric = "ROC",
+    verbose=FALSE,
+    tuneGrid = expand.grid(k = 1:10)
+  )
+  
+  return(max(model$results$ROC, na.rm = TRUE))
+}
+
+# Función objetivo para Hwalc
+fitness_function_Hwalc <- function(selected_features) {
+  selected_cols <- colnames(X)[selected_features == 1]
+  if (length(selected_cols) == 0) return(0)
+  
+  X_selected <- as.matrix(X[, selected_cols, drop = FALSE])
+  
+  train_control <- trainControl(method = "cv", number = 5, classProbs = TRUE, summaryFunction = twoClassSummary)
+  model <- train(
+    x = X_selected,
+    y = y_Hwalc,
+    method = "knn",
+    trControl = train_control,
+    metric = "ROC",
+    verbose=FALSE,
+    tuneGrid = expand.grid(k = 1:10)  # Ajuste de k entre 1 y 10
+  )
+  
+  return(max(model$results$ROC, na.rm = TRUE))  # Retorna el mejor ROC
+}
+```
+
+```{r}
+# Almacenar el mejor resultado para Hdalc
+global_best_solution_Hdalc <- NULL
+global_best_fitness_Hdalc <- -Inf
+
+for (iter in 1:n_iterations) {
+  solutions <- matrix(0, nrow = n_ants, ncol = n_features)
+  fitness <- numeric(n_ants)
+  
+  for (ant in 1:n_ants) {
+    prob <- pheromones / sum(pheromones)
+    solutions[ant, ] <- rbinom(n_features, 1, prob) 
+    fitness[ant] <- fitness_function_Hdalc(solutions[ant, ])
+  }
+  
+  best_ant <- which.max(fitness)
+  if (fitness[best_ant] > global_best_fitness_Hdalc) {
+    global_best_fitness_Hdalc <- fitness[best_ant]
+    global_best_solution_Hdalc <- solutions[best_ant, ]
+  }
+  
+  # Actualizar feromonas
+  pheromones <- (1 - rho) * pheromones + rho * solutions[best_ant, ]
+}
+
+# Variables seleccionadas para Hdalc
+best_features_Hdalc <- which(global_best_solution_Hdalc == 1)
+selected_features_Hdalc <- colnames(X)[best_features_Hdalc]
+cat("Mejores características para Hdalc:", selected_features_Hdalc, "\n")
+
+features_hdalc_knn_aco<-selected_features_Hdalc
+
+# Almacenar el mejor resultado para Hwalc
+global_best_solution_Hwalc <- NULL
+global_best_fitness_Hwalc <- -Inf
+
+for (iter in 1:n_iterations) {
+  
+  solutions <- matrix(0, nrow = n_ants, ncol = n_features)
+  fitness <- numeric(n_ants)
+  
+  for (ant in 1:n_ants) {
+    prob <- pheromones / sum(pheromones)
+    solutions[ant, ] <- rbinom(n_features, 1, prob)
+    fitness[ant] <- fitness_function_Hwalc(solutions[ant, ])
+  }
+  
+  best_ant <- which.max(fitness)
+  if (fitness[best_ant] > global_best_fitness_Hwalc) {
+    global_best_fitness_Hwalc <- fitness[best_ant]
+    global_best_solution_Hwalc <- solutions[best_ant, ]
+  }
+  
+  pheromones <- (1 - rho) * pheromones + rho * solutions[best_ant, ]
+}
+
+# Variables seleccionadas para Hwalc
+best_features_Hwalc <- which(global_best_solution_Hwalc == 1)
+selected_features_Hwalc <- colnames(X)[best_features_Hwalc]
+cat("Mejores características para Hwalc:", selected_features_Hwalc, "\n")
+
+features_hwalc_knn_aco<-selected_features_Hwalc
+
+```
+
+```{r}
+# Modelo final para Hdalc
+X_Hdalc <- as.matrix(X[, selected_features_Hdalc, drop = FALSE])
+final_model_Hdalc <- train(
+  x = X_Hdalc,
+  y = y_Hdalc,
+  method = "knn",
+  trControl = trainControl(method = "cv", number = 5, classProbs = TRUE, summaryFunction = twoClassSummary),
+  metric = "ROC",
+  verbose=FALSE,
+  tuneGrid = expand.grid(k = 1:20)
+)
+cat("ROC final para Hdalc:", max(final_model_Hdalc$results$ROC), "\n")
+
+# Modelo final para Hwalc
+X_Hwalc <- as.matrix(X[, selected_features_Hwalc, drop = FALSE])
+final_model_Hwalc <- train(
+  x = X_Hwalc,
+  y = y_Hwalc,
+  method = "knn",
+  trControl = trainControl(method = "cv", number = 5, classProbs = TRUE, summaryFunction = twoClassSummary),
+  metric = "ROC",
+  verbose=FALSE,
+  tuneGrid = expand.grid(k = 1:20)
+)
+cat("ROC final para Hwalc:", max(final_model_Hwalc$results$ROC), "\n")
+
+hdalc_knn_aco<-final_model_Hdalc$results$ROC
+hwalc_knn_aco<-final_model_Hwalc$results$ROC
+
+```
+
+## CON ALGORITMOS GENÉTICOS
+
+## ALGORITMO GLM
+```{r}
+#install.packages("GA")
+library(GA)
+library(caret)
+library(pROC)
+library(dplyr)
+
+# Preparar el dataset
+X <- model.matrix(~ . - 1, data = df %>% select(-Hdalc, -Hwalc))
+y_Hdalc <- factor(df$Hdalc, levels = c("No", "Yes"))
+y_Hwalc <- factor(df$Hwalc, levels = c("No", "Yes"))
+
+n_features <- ncol(X)  # Número de características
+
+# Configuración de trainControl
+train_control <- trainControl(
+  method = "cv",
+  number = 5,
+  classProbs = TRUE,
+  summaryFunction = twoClassSummary,
+  verbose=FALSE
+)
+
+fitness_function <- function(selected_features, y) {
+  # Convertir el vector binario en un subconjunto de características
+  selected_cols <- which(selected_features == 1)
+  if (length(selected_cols) == 0) return(0)  # Penalizar soluciones vacías
+  
+  # Subconjunto de datos con características seleccionadas
+  X_selected <- as.matrix(X[, selected_cols, drop = FALSE])
+  
+  # Entrenar modelo GLM con validación cruzada
+  model <- train(
+    x = X_selected,
+    y = y,
+    method = "glm",
+    trControl = train_control,
+    family = "binomial",
+    metric = "ROC"
+  )
+  
+  # Retornar el mejor ROC del modelo
+  return(max(model$results$ROC, na.rm = TRUE))
+}
+
+# Algoritmo Genético para Hdalc
+set.seed(123)  # Asegurar reproducibilidad
+ga_Hdalc <- ga(
+  type = "binary",  # Representación binaria para selección de características
+  fitness = function(selected_features) fitness_function(selected_features, y_Hdalc),
+  nBits = n_features,  # Número de características
+  popSize = 50,        # Tamaño de la población
+  maxiter = 50,       # Número máximo de generaciones
+  pmutation = 0.1,     # Tasa de mutación
+  elitism = 5,         # Número de individuos elitistas
+  run = 50,            # Número de iteraciones sin mejora para detenerse
+  seed = 123           # Semilla para reproducibilidad
+)
+
+# Algoritmo Genético para Hwalc
+set.seed(123)
+ga_Hwalc <- ga(
+  type = "binary",
+  fitness = function(selected_features) fitness_function(selected_features, y_Hwalc),
+  nBits = n_features,
+  popSize = 50,
+  maxiter = 50,
+  pmutation = 0.1,
+  elitism = 5,
+  run = 50,
+  seed = 123
+)
+
+# Características seleccionadas para Hdalc
+best_solution_Hdalc <- ga_Hdalc@solution[1, ]  # Mejor solución
+selected_features_Hdalc <- colnames(X)[which(best_solution_Hdalc == 1)]
+cat("Mejores características para Hdalc:", selected_features_Hdalc, "\n")
+
+# Características seleccionadas para Hwalc
+best_solution_Hwalc <- ga_Hwalc@solution[1, ]
+selected_features_Hwalc <- colnames(X)[which(best_solution_Hwalc == 1)]
+cat("Mejores características para Hwalc:", selected_features_Hwalc, "\n")
+
+# Modelo final para Hdalc
+X_Hdalc <- as.matrix(X[, selected_features_Hdalc, drop = FALSE])
+final_model_Hdalc <- train(
+  x = X_Hdalc,
+  y = y_Hdalc,
+  method = "glm",
+  trControl = trainControl(method = "cv", number = 5, classProbs = TRUE, summaryFunction = twoClassSummary,verbose=FALSE),
+  metric = "ROC",
+  family = "binomial"
+)
+cat("ROC final para Hdalc:", max(final_model_Hdalc$results$ROC), "\n")
+
+# Modelo final para Hwalc
+X_Hwalc <- as.matrix(X[, selected_features_Hwalc, drop = FALSE])
+final_model_Hwalc <- train(
+  x = X_Hwalc,
+  y = y_Hwalc,
+  method = "glm",
+  trControl = trainControl(method = "cv", number = 5, classProbs = TRUE, summaryFunction = twoClassSummary,verbose=FALSE),
+  metric = "ROC",
+  family = "binomial"
+)
+cat("ROC final para Hwalc:", max(final_model_Hwalc$results$ROC), "\n")
+
+hdalc_glm_ga<-final_model_Hdalc$results$ROC
+hwalc_glm_ga<-final_model_Hwalc$results$ROC
+
+features_hdalc_glm_ga<-selected_features_Hdalc
+features_hwalc_glm_ga<-selected_features_Hwalc
+```
+
+## ALGORITMO GBM
+
+```{r}
+library(GA)
+library(caret)
+library(dplyr)
+library(pROC)
+
+# Preparar el dataset
+X <- model.matrix(~ . - 1, data = df %>% select(-Hdalc, -Hwalc))
+y_Hdalc <- factor(df$Hdalc, levels = c("No", "Yes"))
+y_Hwalc <- factor(df$Hwalc, levels = c("No", "Yes"))
+
+n_features <- ncol(X)
+
+train_control <- trainControl(
+  method = "cv",
+  number = 5,
+  classProbs = TRUE,
+  summaryFunction = twoClassSummary
+)
+fitness_function <- function(selected_features, y) {
+  selected_cols <- which(selected_features == 1)
+  
+  if (length(selected_cols) == 0) return(0)
+  X_selected <- as.matrix(X[, selected_cols, drop = FALSE])
+  
+  model <- train(
+    x = X_selected,
+    y = y,
+    method = "gbm",
+    trControl = train_control,
+    metric = "ROC",
+    verbose = FALSE,
+    tuneGrid = expand.grid(
+      n.trees = 50,          # Número de árboles
+      interaction.depth = 3, # Profundidad de los árboles
+      shrinkage = 0.1,       # Tasa de aprendizaje
+      n.minobsinnode = 10    # Mínimo de observaciones por nodo
+    )
+  )
+  
+  # Retornar el mejor ROC del modelo
+  return(max(model$results$ROC, na.rm = TRUE))
+}
+# Algoritmo Genético para Hdalc
+set.seed(123)  # Asegurar reproducibilidad
+ga_Hdalc <- ga(
+  type = "binary",  # Representación binaria para selección de características
+  fitness = function(selected_features) fitness_function(selected_features, y_Hdalc),
+  nBits = n_features,  # Número de características
+  popSize = 50,        # Tamaño de la población
+  maxiter = 20,       # Número máximo de generaciones
+  pmutation = 0.1,     # Tasa de mutación
+  elitism = 5,         # Número de individuos elitistas
+  run = 50,            # Número de iteraciones sin mejora para detenerse
+  seed = 123           # Semilla para reproducibilidad
+)
+
+# Algoritmo Genético para Hwalc
+set.seed(123)
+ga_Hwalc <- ga(
+  type = "binary",
+  fitness = function(selected_features) fitness_function(selected_features, y_Hwalc),
+  nBits = n_features,
+  popSize = 50,
+  maxiter = 20,
+  pmutation = 0.1,
+  elitism = 5,
+  run = 50,
+  seed = 123
+)
+# Características seleccionadas para Hdalc
+best_solution_Hdalc <- ga_Hdalc@solution[1, ]
+selected_features_Hdalc <- colnames(X)[which(best_solution_Hdalc == 1)]
+cat("Mejores características para Hdalc:", selected_features_Hdalc, "\n")
+
+# Características seleccionadas para Hwalc
+best_solution_Hwalc <- ga_Hwalc@solution[1, ]
+selected_features_Hwalc <- colnames(X)[which(best_solution_Hwalc == 1)]
+cat("Mejores características para Hwalc:", selected_features_Hwalc, "\n")
+# Modelo final para Hdalc
+X_Hdalc <- as.matrix(X[, selected_features_Hdalc, drop = FALSE])
+final_model_Hdalc <- train(
+  x = X_Hdalc,
+  y = y_Hdalc,
+  method = "gbm",
+  trControl = trainControl(method = "cv", number = 5, classProbs = TRUE, summaryFunction = twoClassSummary),
+  metric = "ROC",
+  verbose = FALSE,
+  tuneGrid = expand.grid(
+    n.trees = 50,
+    interaction.depth = 3,
+    shrinkage = 0.1,
+    n.minobsinnode = 10
+  )
+)
+cat("ROC final para Hdalc:", max(final_model_Hdalc$results$ROC), "\n")
+
+# Modelo final para Hwalc
+X_Hwalc <- as.matrix(X[, selected_features_Hwalc, drop = FALSE])
+final_model_Hwalc <- train(
+  x = X_Hwalc,
+  y = y_Hwalc,
+  method = "gbm",
+  trControl = trainControl(method = "cv", number = 5, classProbs = TRUE, summaryFunction = twoClassSummary),
+  metric = "ROC",
+  verbose = FALSE,
+  tuneGrid = expand.grid(
+    n.trees = 50,
+    interaction.depth = 3,
+    shrinkage = 0.1,
+    n.minobsinnode = 10
+  )
+)
+cat("ROC final para Hwalc:", max(final_model_Hwalc$results$ROC), "\n")
+
+hdalc_gbm_ga<-final_model_Hdalc$results$ROC
+hwalc_gbm_ga<-final_model_Hwalc$results$ROC
+
+features_hdalc_gbm_ga<-selected_features_Hdalc
+features_hwalc_gbm_ga<-selected_features_Hwalc
+
+```
+## ALGORITMO KNN
+```{r}
+library(GA)
+library(caret)
+library(dplyr)
+library(pROC)
+
+# Preparar el dataset
+X <- model.matrix(~ . - 1, data = df %>% select(-Hdalc, -Hwalc))
+y_Hdalc <- factor(df$Hdalc, levels = c("No", "Yes"))
+y_Hwalc <- factor(df$Hwalc, levels = c("No", "Yes"))
+
+n_features <- ncol(X)
+
+# Configuración de trainControl
+train_control <- trainControl(
+  method = "cv",
+  number = 5,
+  classProbs = TRUE,
+  summaryFunction = twoClassSummary
+)
+
+fitness_function <- function(selected_features, y) {
+  selected_cols <- which(selected_features == 1)
+  if (length(selected_cols) == 0) return(0)  
+  X_selected <- as.matrix(X[, selected_cols, drop = FALSE])
+  model <- train(
+    x = X_selected,
+    y = y,
+    method = "knn",
+    trControl = train_control,
+    metric = "ROC",
+    tuneGrid = expand.grid(k = 1:10)  
+  )
+  
+  return(max(model$results$ROC, na.rm = TRUE))
+}
+
+set.seed(123)  # Asegurar reproducibilidad
+ga_Hdalc <- ga(
+  type = "binary",  # Representación binaria para selección de características
+  fitness = function(selected_features) fitness_function(selected_features, y_Hdalc),
+  nBits = n_features,  
+  popSize = 50,        
+  maxiter = 100,       
+  pmutation = 0.1,     
+  elitism = 5,         
+  run = 50,           
+  seed = 123           
+)
+
+set.seed(123)
+ga_Hwalc <- ga(
+  type = "binary",
+  fitness = function(selected_features) fitness_function(selected_features, y_Hwalc),
+  nBits = n_features,
+  popSize = 50,
+  maxiter = 100,
+  pmutation = 0.1,
+  elitism = 5,
+  run = 50,
+  seed = 123
+)
+
+# Características seleccionadas para Hdalc
+best_solution_Hdalc <- ga_Hdalc@solution[1, ]  # Mejor solución
+selected_features_Hdalc <- colnames(X)[which(best_solution_Hdalc == 1)]
+cat("Mejores características para Hdalc:", selected_features_Hdalc, "\n")
+
+# Características seleccionadas para Hwalc
+best_solution_Hwalc <- ga_Hwalc@solution[1, ]
+selected_features_Hwalc <- colnames(X)[which(best_solution_Hwalc == 1)]
+cat("Mejores características para Hwalc:", selected_features_Hwalc, "\n")
+
+# Modelo final para Hdalc
+X_Hdalc <- as.matrix(X[, selected_features_Hdalc, drop = FALSE])
+final_model_Hdalc <- train(
+  x = X_Hdalc,
+  y = y_Hdalc,
+  method = "knn",
+  trControl = trainControl(method = "cv", number = 5, classProbs = TRUE, summaryFunction = twoClassSummary),
+  metric = "ROC",
+  tuneGrid = expand.grid(k = 1:10)
+)
+cat("ROC final para Hdalc:", max(final_model_Hdalc$results$ROC), "\n")
+
+# Modelo final para Hwalc
+X_Hwalc <- as.matrix(X[, selected_features_Hwalc, drop = FALSE])
+final_model_Hwalc <- train(
+  x = X_Hwalc,
+  y = y_Hwalc,
+  method = "knn",
+  trControl = trainControl(method = "cv", number = 5, classProbs = TRUE, summaryFunction = twoClassSummary),
+  metric = "ROC",
+  tuneGrid = expand.grid(k = 1:10)
+)
+cat("ROC final para Hwalc:", max(final_model_Hwalc$results$ROC), "\n")
+
+hdalc_knn_ga<-final_model_Hdalc$results$ROC
+hwalc_knn_ga<-final_model_Hwalc$results$ROC
+
+features_hdalc_knn_ga<-selected_features_Hdalc
+features_hwalc_knn_ga<-selected_features_Hwalc
+
+```
+## ALGORITMO ENJAMBRE DE PARTÍCULAS
+## ALGORITMO GLM
+```{r}
+library(caret)
+library(pso)
+library(pROC)
+library(dplyr)
+
+# Preparar el dataset
+X <- model.matrix(~ . - 1, data = df %>% select(-Hdalc, -Hwalc))  # Convertir predictores a numérico
+y_Hdalc <- factor(df$Hdalc, levels = c("No", "Yes"))  # Asegurar que la variable objetivo sea un factor
+y_Hwalc <- factor(df$Hwalc, levels = c("No", "Yes"))
+
+n_features <- ncol(X)  # Número de características
+
+# Configuración de trainControl
+train_control <- trainControl(
+  method = "cv",
+  number = 5,
+  classProbs = TRUE,
+  summaryFunction = twoClassSummary
+)
+fitness_function <- function(selected_features, y) {
+  # Convertir los valores continuos de PSO a binarios (0 o 1)
+  binary_features <- as.integer(selected_features > 0.5)
+  
+  # Penalizar soluciones vacías
+  if (sum(binary_features) == 0) return(0)
+  
+  # Subconjunto de características seleccionadas
+  selected_cols <- which(binary_features == 1)
+  X_selected <- as.matrix(X[, selected_cols, drop = FALSE])
+  
+  # Entrenar modelo GLM con validación cruzada
+  model <- train(
+    x = X_selected,
+    y = y,
+    method = "glm",
+    trControl = train_control,
+    metric = "ROC",
+    family = "binomial"
+  )
+  
+  # Retornar el mejor ROC del modelo
+  return(max(model$results$ROC, na.rm = TRUE))
+}
+# PSO para Hdalc
+set.seed(123)
+pso_Hdalc <- psoptim(
+  par = runif(n_features),
+  fn = function(selected_features) -fitness_function(selected_features, y_Hdalc),
+  lower = rep(0, n_features),
+  upper = rep(1, n_features),
+  control = list(maxit = 50, s = 50, trace = 1)
+)
+
+# PSO para Hwalc
+set.seed(123)
+pso_Hwalc <- psoptim(
+  par = runif(n_features),
+  fn = function(selected_features) -fitness_function(selected_features, y_Hwalc),
+  lower = rep(0, n_features),
+  upper = rep(1, n_features),
+  control = list(maxit = 50, s = 50, trace = 1)
+)
+
+# Características seleccionadas para Hdalc
+best_solution_Hdalc <- as.integer(pso_Hdalc$par > 0.5)  
+selected_features_Hdalc <- colnames(X)[which(best_solution_Hdalc == 1)]
+cat("Mejores características para Hdalc:", selected_features_Hdalc, "\n")
+
+# Características seleccionadas para Hwalc
+best_solution_Hwalc <- as.integer(pso_Hwalc$par > 0.5)
+selected_features_Hwalc <- colnames(X)[which(best_solution_Hwalc == 1)]
+cat("Mejores características para Hwalc:", selected_features_Hwalc, "\n")
+
+# Modelo final para Hdalc
+X_Hdalc <- as.matrix(X[, selected_features_Hdalc, drop = FALSE])
+final_model_Hdalc <- train(
+  x = X_Hdalc,
+  y = y_Hdalc,
+  method = "glm",
+  trControl = trainControl(method = "cv", number = 5, classProbs = TRUE, summaryFunction = twoClassSummary),
+  metric = "ROC",
+  family = "binomial"
+)
+cat("ROC final para Hdalc:", max(final_model_Hdalc$results$ROC), "\n")
+
+# Modelo final para Hwalc
+X_Hwalc <- as.matrix(X[, selected_features_Hwalc, drop = FALSE])
+final_model_Hwalc <- train(
+  x = X_Hwalc,
+  y = y_Hwalc,
+  method = "glm",
+  trControl = trainControl(method = "cv", number = 5, classProbs = TRUE, summaryFunction = twoClassSummary),
+  metric = "ROC",
+  family = "binomial"
+)
+cat("ROC final para Hwalc:", max(final_model_Hwalc$results$ROC), "\n")
+
+hdalc_glm_pso<-final_model_Hdalc$results$ROC
+hwalc_glm_pso<-final_model_Hwalc$results$ROC
+
+features_hdalc_glm_pso<-selected_features_Hdalc
+features_hwalc_glm_pso<-selected_features_Hwalc
+
+```
+
+## ALGORITMO XGB
+```{r}
+library(caret)
+library(pso)
+library(pROC)
+library(dplyr)
+
+# Preparar el dataset
+X <- model.matrix(~ . - 1, data = df %>% select(-Hdalc, -Hwalc))
+y_Hdalc <- factor(df$Hdalc, levels = c("No", "Yes"))  
+y_Hwalc <- factor(df$Hwalc, levels = c("No", "Yes"))
+
+n_features <- ncol(X) 
+
+# Configuración de trainControl
+train_control <- trainControl(
+  method = "cv",
+  number = 5,
+  classProbs = TRUE,
+  summaryFunction = twoClassSummary
+)
+fitness_function <- function(selected_features, y) {
+  binary_features <- as.integer(selected_features > 0.5)
+  
+  if (sum(binary_features) == 0) return(0)
+  
+  selected_cols <- which(binary_features == 1)
+  X_selected <- as.matrix(X[, selected_cols, drop = FALSE])
+  
+  model <- train(
+    x = X_selected,
+    y = y,
+    method = "gbm",
+    trControl = train_control,
+    metric = "ROC",
+    verbose = FALSE,
+    tuneGrid = expand.grid(
+      n.trees = 50,          # Número de árboles
+      interaction.depth = 3, # Profundidad de los árboles
+      shrinkage = 0.1,       # Tasa de aprendizaje
+      n.minobsinnode = 10    # Mínimo de observaciones por nodo
+    )
+  )
+  
+  return(max(model$results$ROC, na.rm = TRUE))
+}
+set.seed(123)
+pso_Hdalc <- psoptim(
+  par = runif(n_features), 
+  fn = function(selected_features) -fitness_function(selected_features, y_Hdalc),  
+  lower = rep(0, n_features),  
+  upper = rep(1, n_features), 
+  control = list(maxit = 50, s = 50, trace = 1) 
+)
+
+# PSO para Hwalc
+set.seed(123)
+pso_Hwalc <- psoptim(
+  par = runif(n_features),
+  fn = function(selected_features) -fitness_function(selected_features, y_Hwalc),
+  lower = rep(0, n_features),
+  upper = rep(1, n_features),
+  control = list(maxit = 50, s = 50, trace = 1)
+)
+
+best_solution_Hdalc <- as.integer(pso_Hdalc$par > 0.5)  
+selected_features_Hdalc <- colnames(X)[which(best_solution_Hdalc == 1)]
+cat("Mejores características para Hdalc:", selected_features_Hdalc, "\n")
+
+# Características seleccionadas para Hwalc
+best_solution_Hwalc <- as.integer(pso_Hwalc$par > 0.5)
+selected_features_Hwalc <- colnames(X)[which(best_solution_Hwalc == 1)]
+cat("Mejores características para Hwalc:", selected_features_Hwalc, "\n")
+
+X_Hdalc <- as.matrix(X[, selected_features_Hdalc, drop = FALSE])
+final_model_Hdalc <- train(
+  x = X_Hdalc,
+  y = y_Hdalc,
+  method = "gbm",
+  trControl = trainControl(method = "cv", number = 5, classProbs = TRUE, summaryFunction = twoClassSummary),
+  metric = "ROC",
+  verbose = FALSE,
+  tuneGrid = expand.grid(
+    n.trees = 50,
+    interaction.depth = 3,
+    shrinkage = 0.1,
+    n.minobsinnode = 10
+  )
+)
+cat("ROC final para Hdalc:", max(final_model_Hdalc$results$ROC), "\n")
+
+# Modelo final para Hwalc
+X_Hwalc <- as.matrix(X[, selected_features_Hwalc, drop = FALSE])
+final_model_Hwalc <- train(
+  x = X_Hwalc,
+  y = y_Hwalc,
+  method = "gbm",
+  trControl = trainControl(method = "cv", number = 5, classProbs = TRUE, summaryFunction = twoClassSummary),
+  metric = "ROC",
+  verbose = FALSE,
+  tuneGrid = expand.grid(
+    n.trees = 50,
+    interaction.depth = 3,
+    shrinkage = 0.1,
+    n.minobsinnode = 10
+  )
+)
+cat("ROC final para Hwalc:", max(final_model_Hwalc$results$ROC), "\n")
+
+hdalc_gbm_pso<-final_model_Hdalc$results$ROC
+hwalc_gbm_pso<-final_model_Hwalc$results$ROC
+
+features_hdalc_gbm_pso<-selected_features_Hdalc
+features_hwalc_gbm_pso<-selected_features_Hwalc
+
+```
+## ALGORITMO KNN
+```{r}
+library(caret)
+library(pso)
+library(pROC)
+library(dplyr)
+
+# Preparar el dataset
+X <- model.matrix(~ . - 1, data = df %>% select(-Hdalc, -Hwalc))
+y_Hdalc <- factor(df$Hdalc, levels = c("No", "Yes"))
+y_Hwalc <- factor(df$Hwalc, levels = c("No", "Yes"))
+
+n_features <- ncol(X)  # Número de características
+
+# Configuración de trainControl
+train_control <- trainControl(
+  method = "cv",
+  number = 5,
+  classProbs = TRUE,
+  summaryFunction = twoClassSummary
+)
+fitness_function <- function(selected_features, y) {
+  
+  binary_features <- as.integer(selected_features > 0.5)
+  if (sum(binary_features) == 0) return(0)
+  selected_cols <- which(binary_features == 1)
+  X_selected <- as.matrix(X[, selected_cols, drop = FALSE])
+  model <- train(
+    x = X_selected,
+    y = y,
+    method = "knn",
+    trControl = train_control,
+    metric = "ROC",
+    tuneGrid = expand.grid(k = 1:10)  # Ajuste de k entre 1 y 10
+  )
+  
+  # Retornar el mejor ROC del modelo
+  return(max(model$results$ROC, na.rm = TRUE))
+}
+
+# PSO para Hdalc
+set.seed(123)
+pso_Hdalc <- psoptim(
+  par = runif(n_features),  # Inicializar partículas con valores aleatorios
+  fn = function(selected_features) -fitness_function(selected_features, y_Hdalc),  # Negativo para minimizar
+  lower = rep(0, n_features),  # Límites inferiores
+  upper = rep(1, n_features),  # Límites superiores
+  control = list(maxit = 100, s = 50, trace = 1)  # Configuración del PSO
+)
+
+# PSO para Hwalc
+set.seed(123)
+pso_Hwalc <- psoptim(
+  par = runif(n_features),
+  fn = function(selected_features) -fitness_function(selected_features, y_Hwalc),
+  lower = rep(0, n_features),
+  upper = rep(1, n_features),
+  control = list(maxit = 100, s = 50, trace = 1)
+)
+# Características seleccionadas para Hdalc
+best_solution_Hdalc <- as.integer(pso_Hdalc$par > 0.5)  # Convertir a binario
+selected_features_Hdalc <- colnames(X)[which(best_solution_Hdalc == 1)]
+cat("Mejores características para Hdalc:", selected_features_Hdalc, "\n")
+
+# Características seleccionadas para Hwalc
+best_solution_Hwalc <- as.integer(pso_Hwalc$par > 0.5)
+selected_features_Hwalc <- colnames(X)[which(best_solution_Hwalc == 1)]
+cat("Mejores características para Hwalc:", selected_features_Hwalc, "\n")
+# Modelo final para Hdalc
+X_Hdalc <- as.matrix(X[, selected_features_Hdalc, drop = FALSE])
+final_model_Hdalc <- train(
+  x = X_Hdalc,
+  y = y_Hdalc,
+  method = "knn",
+  trControl = trainControl(method = "cv", number = 5, classProbs = TRUE, summaryFunction = twoClassSummary),
+  metric = "ROC",
+  tuneGrid = expand.grid(k = 1:10)
+)
+cat("ROC final para Hdalc:", max(final_model_Hdalc$results$ROC), "\n")
+
+# Modelo final para Hwalc
+X_Hwalc <- as.matrix(X[, selected_features_Hwalc, drop = FALSE])
+final_model_Hwalc <- train(
+  x = X_Hwalc,
+  y = y_Hwalc,
+  method = "knn",
+  trControl = trainControl(method = "cv", number = 5, classProbs = TRUE, summaryFunction = twoClassSummary),
+  metric = "ROC",
+  tuneGrid = expand.grid(k = 1:10)
+)
+cat("ROC final para Hwalc:", max(final_model_Hwalc$results$ROC), "\n")
+
+hdalc_knn_pso<-final_model_Hdalc$results$ROC
+hwalc_knn_pso<-final_model_Hwalc$results$ROC
+
+features_hdalc_knn_pso<-selected_features_Hdalc
+features_hwalc_knn_pso<-selected_features_Hwalc
+
+```

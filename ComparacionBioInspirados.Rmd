@@ -1,0 +1,55 @@
+```{r}
+results <- data.frame(
+  GeneticAlgorithm = c("GA", "GA","GA","PSO", "PSO","PSO", "ACO", "ACO","ACO", "None", "None", "None"),
+  Classifier = c("KNN", "GBM","GLM", "KNN", "GBM","GLM","KNN", "GBM","GLM", "KNN", "GBM","GLM"),
+  ROC = c(max(hdalc_knn_ga), max(hdalc_gbm_ga),max(hdalc_glm_ga),
+          max(hdalc_knn_pso),max(hdalc_gbm_pso),max(hdalc_glm_pso)
+          , max(hdalc_knn_aco), max(hdalc_gbm_aco),max(hdalc_glm_aco), 
+          max(knn_model_Hdalc$results$ROC), max(gbm_dalc$results$ROC),max(glm_dalc$results$ROC))
+)
+library(ggplot2)
+
+ggplot(results, aes(x = Classifier, y = ROC, fill = GeneticAlgorithm)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  labs(title = "Comparación de ROC con y sin Algoritmos Genéticos para HDALC",
+       x = "Algoritmo de Clasificación",
+       y = "ROC") +
+  theme_minimal()
+
+# Crear el gráfico detallado
+ggplot(results, aes(x = Classifier, y = ROC, fill = GeneticAlgorithm, group = GeneticAlgorithm)) +
+  # Barras
+  geom_bar(stat = "identity", position = position_dodge(width = 0.5), alpha = 0.8) +
+  # Línea que conecta los puntos
+  geom_line(aes(color = GeneticAlgorithm), position = position_dodge(width = 0.5), size = 1) +
+  # Puntos en las líneas
+  geom_point(aes(color = GeneticAlgorithm), position = position_dodge(width = 0.5), size = 3) +
+  # Etiquetas de valor en las barras
+  geom_text(aes(label = round(ROC, 2)), 
+            position = position_dodge(width = 0.5), 
+            vjust = -0.5, 
+            size = 3.5) +
+  # Personalización de ejes y título
+  labs(
+    title = "Comparación de ROC con y sin Algoritmos Genéticos",
+    subtitle = "Valores de ROC para diferentes combinaciones de algoritmos",
+    x = "Algoritmo de Clasificación",
+    y = "ROC",
+    fill = "Algoritmo Genético",
+    color = "Algoritmo Genético"
+  ) +
+  # Ajuste de los ejes
+  scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, 0.1)) +
+  # Tema estético
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(size = 12),
+    legend.position = "top",
+    legend.title = element_text(face = "bold"),
+    axis.text = element_text(size = 10),
+    axis.title = element_text(face = "bold", size = 12)
+  )
+
+
+```

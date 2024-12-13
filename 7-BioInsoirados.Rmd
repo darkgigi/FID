@@ -255,7 +255,7 @@ best_features_Hdalc <- which(global_best_solution_Hdalc == 1)
 selected_features_Hdalc <- colnames(X)[best_features_Hdalc]
 cat("Mejores características para Hdalc:", selected_features_Hdalc, "\n")
 
-features_hdalc_glm_aco<-selected_features_Hdalc
+features_hdalc_gbm_aco<-selected_features_Hdalc
 
 # Almacenar el mejor resultado para Hwalc
 global_best_solution_Hwalc <- NULL
@@ -306,8 +306,8 @@ cat("El ROC final del modelo para Hdalc es:", best_roc, "\n")
 best_roc <- max(final_model_Hwalc$results$ROC)
 cat("El ROC final del modelo para Hwalc es:", best_roc, "\n")
 
-hdalc_glm_aco<-final_model_Hdalc$results$ROC
-hwalc_glm_aco<-final_model_Hwalc$results$ROC
+hdalc_gbm_aco<-final_model_Hdalc$results$ROC
+hwalc_gbm_aco<-final_model_Hwalc$results$ROC
 
 ```
 
@@ -351,7 +351,6 @@ fitness_function_Hdalc <- function(selected_features) {
     method = "knn",
     trControl = train_control,
     metric = "ROC",
-    verbose=FALSE,
     tuneGrid = expand.grid(k = 1:10)
   )
   
@@ -372,7 +371,6 @@ fitness_function_Hwalc <- function(selected_features) {
     method = "knn",
     trControl = train_control,
     metric = "ROC",
-    verbose=FALSE,
     tuneGrid = expand.grid(k = 1:10)  # Ajuste de k entre 1 y 10
   )
   
@@ -454,8 +452,7 @@ final_model_Hdalc <- train(
   method = "knn",
   trControl = trainControl(method = "cv", number = 5, classProbs = TRUE, summaryFunction = twoClassSummary),
   metric = "ROC",
-  verbose=FALSE,
-  tuneGrid = expand.grid(k = 1:20)
+  tuneGrid = expand.grid(k = 1:10)
 )
 cat("ROC final para Hdalc:", max(final_model_Hdalc$results$ROC), "\n")
 
@@ -467,8 +464,7 @@ final_model_Hwalc <- train(
   method = "knn",
   trControl = trainControl(method = "cv", number = 5, classProbs = TRUE, summaryFunction = twoClassSummary),
   metric = "ROC",
-  verbose=FALSE,
-  tuneGrid = expand.grid(k = 1:20)
+  tuneGrid = expand.grid(k = 1:10)
 )
 cat("ROC final para Hwalc:", max(final_model_Hwalc$results$ROC), "\n")
 
@@ -532,7 +528,7 @@ ga_Hdalc <- ga(
   fitness = function(selected_features) fitness_function(selected_features, y_Hdalc),
   nBits = n_features,  # Número de características
   popSize = 50,        # Tamaño de la población
-  maxiter = 50,       # Número máximo de generaciones
+  maxiter = 20,       # Número máximo de generaciones
   pmutation = 0.1,     # Tasa de mutación
   elitism = 5,         # Número de individuos elitistas
   run = 50,            # Número de iteraciones sin mejora para detenerse
@@ -546,7 +542,7 @@ ga_Hwalc <- ga(
   fitness = function(selected_features) fitness_function(selected_features, y_Hwalc),
   nBits = n_features,
   popSize = 50,
-  maxiter = 50,
+  maxiter = 20,
   pmutation = 0.1,
   elitism = 5,
   run = 50,
@@ -762,7 +758,7 @@ ga_Hdalc <- ga(
   fitness = function(selected_features) fitness_function(selected_features, y_Hdalc),
   nBits = n_features,  
   popSize = 50,        
-  maxiter = 100,       
+  maxiter = 20,       
   pmutation = 0.1,     
   elitism = 5,         
   run = 50,           
@@ -775,7 +771,7 @@ ga_Hwalc <- ga(
   fitness = function(selected_features) fitness_function(selected_features, y_Hwalc),
   nBits = n_features,
   popSize = 50,
-  maxiter = 100,
+  maxiter = 20,
   pmutation = 0.1,
   elitism = 5,
   run = 50,
@@ -876,7 +872,7 @@ pso_Hdalc <- psoptim(
   fn = function(selected_features) -fitness_function(selected_features, y_Hdalc),
   lower = rep(0, n_features),
   upper = rep(1, n_features),
-  control = list(maxit = 50, s = 50, trace = 1)
+  control = list(maxit = 20, s = 50, trace = 1)
 )
 
 # PSO para Hwalc
@@ -886,7 +882,7 @@ pso_Hwalc <- psoptim(
   fn = function(selected_features) -fitness_function(selected_features, y_Hwalc),
   lower = rep(0, n_features),
   upper = rep(1, n_features),
-  control = list(maxit = 50, s = 50, trace = 1)
+  control = list(maxit = 20, s = 50, trace = 1)
 )
 
 # Características seleccionadas para Hdalc
@@ -983,7 +979,7 @@ pso_Hdalc <- psoptim(
   fn = function(selected_features) -fitness_function(selected_features, y_Hdalc),  
   lower = rep(0, n_features),  
   upper = rep(1, n_features), 
-  control = list(maxit = 50, s = 50, trace = 1) 
+  control = list(maxit = 20, s = 50, trace = 1) 
 )
 
 # PSO para Hwalc
@@ -993,7 +989,7 @@ pso_Hwalc <- psoptim(
   fn = function(selected_features) -fitness_function(selected_features, y_Hwalc),
   lower = rep(0, n_features),
   upper = rep(1, n_features),
-  control = list(maxit = 50, s = 50, trace = 1)
+  control = list(maxit = 20, s = 50, trace = 1)
 )
 
 best_solution_Hdalc <- as.integer(pso_Hdalc$par > 0.5)  
@@ -1094,7 +1090,7 @@ pso_Hdalc <- psoptim(
   fn = function(selected_features) -fitness_function(selected_features, y_Hdalc),  # Negativo para minimizar
   lower = rep(0, n_features),  # Límites inferiores
   upper = rep(1, n_features),  # Límites superiores
-  control = list(maxit = 100, s = 50, trace = 1)  # Configuración del PSO
+  control = list(maxit = 20, s = 50, trace = 1)  # Configuración del PSO
 )
 
 # PSO para Hwalc
@@ -1104,7 +1100,7 @@ pso_Hwalc <- psoptim(
   fn = function(selected_features) -fitness_function(selected_features, y_Hwalc),
   lower = rep(0, n_features),
   upper = rep(1, n_features),
-  control = list(maxit = 100, s = 50, trace = 1)
+  control = list(maxit = 20, s = 50, trace = 1)
 )
 # Características seleccionadas para Hdalc
 best_solution_Hdalc <- as.integer(pso_Hdalc$par > 0.5)  # Convertir a binario
@@ -1145,4 +1141,73 @@ hwalc_knn_pso<-final_model_Hwalc$results$ROC
 features_hdalc_knn_pso<-selected_features_Hdalc
 features_hwalc_knn_pso<-selected_features_Hwalc
 
+```
+
+```{r}
+
+print("---ANALISIS ROC---")
+print("--ACO--")
+print("-GLB-")
+cat("ROC final para Hwalc:",max(hwalc_glm_aco), "\n")
+cat("ROC final para Hdalc:",max(hdalc_glm_aco), "\n")
+print("-GBM-")
+cat("ROC final para Hwalc:",max(hwalc_glm_aco), "\n")
+cat("ROC final para Hdalc:",max(hdalc_glm_aco), "\n")
+print("-KNN-")
+cat("ROC final para Hwalc:",max(hwalc_knn_aco), "\n")
+cat("ROC final para Hdalc:",max(hdalc_knn_aco), "\n")
+print("--GA--")
+print("-GLB-")
+cat("ROC final para Hwalc:",max(hwalc_glm_ga), "\n")
+cat("ROC final para Hdalc:",max(hdalc_glm_ga), "\n")
+print("-GBM-")
+cat("ROC final para Hwalc:",max(hwalc_glm_ga), "\n")
+cat("ROC final para Hdalc:",max(hdalc_glm_ga), "\n")
+print("-KNN-")
+cat("ROC final para Hwalc:",max(hwalc_knn_ga), "\n")
+cat("ROC final para Hdalc:",max(hdalc_knn_ga), "\n")
+print("--PSO--")
+print("-GLB-")
+cat("ROC final para Hwalc:",max(hwalc_glm_pso), "\n")
+cat("ROC final para Hdalc:",max(hdalc_glm_pso), "\n")
+print("-GBM-")
+cat("ROC final para Hwalc:",max(hwalc_glm_pso), "\n")
+cat("ROC final para Hdalc:",max(hdalc_glm_pso), "\n")
+print("-KNN-")
+cat("ROC final para Hwalc:",max(hwalc_knn_pso), "\n")
+cat("ROC final para Hdalc:",max(hdalc_knn_pso), "\n")
+```
+
+```{r}
+print("---ANALISIS FEATURES SELECCIONADAS---")
+print("--ACO--")
+print("-GLB-")
+cat("Features seleccionadas para Hdalc:",features_hdalc_glm_aco, "\n")
+cat("Features seleccionadas para Hwalc:",features_hwalc_glm_aco, "\n")
+print("-GBM-")
+cat("Features seleccionadas para Hdalc:",features_hdalc_glm_aco, "\n")
+cat("Features seleccionadas para Hwalc:",features_hwalc_gbm_aco, "\n")
+print("-KNN-")
+cat("Features seleccionadas para Hdalc:",features_hdalc_knn_aco, "\n")
+cat("Features seleccionadas para Hwalc:",features_hwalc_knn_aco, "\n")
+print("--GA--")
+print("-GLB-")
+cat("Features seleccionadas para Hdalc:",features_hdalc_glm_ga, "\n")
+cat("Features seleccionadas para Hwalc:",features_hwalc_glm_ga, "\n")
+print("-GBM-")
+cat("Features seleccionadas para Hdalc:",features_hdalc_gbm_ga, "\n")
+cat("Features seleccionadas para Hwalc:",features_hwalc_gbm_ga, "\n")
+print("-KNN-")
+cat("Features seleccionadas para Hdalc:",features_hdalc_knn_ga, "\n")
+cat("Features seleccionadas para Hwalc:",features_hwalc_knn_ga, "\n")
+print("--PSO--")
+print("-GLB-")
+cat("Features seleccionadas para Hdalc:",features_hdalc_glm_pso, "\n")
+cat("Features seleccionadas para Hwalc:",features_hwalc_glm_pso, "\n")
+print("-GBM-")
+cat("Features seleccionadas para Hdalc:",features_hdalc_gbm_pso, "\n")
+cat("Features seleccionadas para Hwalc:",features_hwalc_gbm_pso, "\n")
+print("-KNN-")
+cat("Features seleccionadas para Hdalc:",features_hdalc_knn_pso, "\n")
+cat("Features seleccionadas para Hwalc:",features_hwalc_knn_pso, "\n")
 ```

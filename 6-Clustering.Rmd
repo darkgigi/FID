@@ -1,3 +1,4 @@
+
 ```{r}
 library(tidyverse)
 library(cluster)
@@ -5,6 +6,9 @@ library(factoextra)
 library(caret)
 library(ggplot2)
 library(rgl)
+library(dbscan)
+library(Boruta)
+library(clusterSim)
 
 # 1. Lectura de dataset
 df=read.table("data/student-por.csv",sep=",",header=TRUE)
@@ -19,7 +23,13 @@ cols_to_boolean <- c("schoolsup", "famsup", "paid", "activities", "nursery", "hi
 df[cols_to_boolean] <- lapply(df[cols_to_boolean], function(x) x == "yes")
 data <- df
 
-# 2. Seleccionar las variables a tener en cuenta en la clusterización. Hemos elegido las variables que hemos considerado más interesantes relativas a las notas obtenidas y al consumo de alcohol de los alumnos
+# 2. Seleccionar las variables a tener en cuenta en la clusterización. Hemos elegido las variables que hemos considerado más interesantes relativas a las notas obtenidas y al consumo de alcohol de los alumnos. Hemos asegurado su importancia con Boruta.
+
+boruta_result <- Boruta(G1 + G2 + G3 + Dalc + Walc ~ ., data = data, doTrace = 2)
+
+print(boruta_result$finalDecision[boruta_result$finalDecision == "Confirmed"])
+plot(boruta_result, main = "Importancia de Variables con Boruta")
+
 relevant_variables <- data %>% select(G1, G2, G3, Dalc, Walc)
 
 # 3. Convertir variables categóricas a variables numéricas utilizando one-hot encoding
@@ -28,7 +38,10 @@ variables_encoded <- predict(dummies, newdata = relevant_variables)
 
 # 4. Escalar las variables
 variables_scaled <- scale(variables_encoded)
+```
 
+## Algoritmo K-means
+```{r}
 # 4.1. Calcular Silhouette para determinar el número óptimo de clusters
 silhouette_scores <- function(k) {
   km <- kmeans(variables_scaled, centers = k, nstart = 25)
@@ -81,4 +94,191 @@ data %>% group_by(cluster) %>%
 fviz_contrib(pca_result, choice = "var", axes = 1, top = 5)
 # Dim2
 fviz_contrib(pca_result, choice = "var", axes = 2, top = 5)
+```
+
+## Algoritmo K-medoids
+```{r}
+# 5. Aplicar K-medoids con k = 3
+set.seed(42) # Para reproducibilidad
+kmedoids_result <- pam(variables_scaled, k = 3)
+
+# 6. Agregar el resultado al dataset original
+data$cluster_kmedoids <- as.factor(kmedoids_result$clustering)
+
+# 7. Visualización de clusters en las dimensiones originales (ND)
+kmedoids_cluster_data <- list(data = variables_scaled, cluster = kmedoids_result$clustering)
+
+fviz_cluster(kmedoids_result, data = variables_scaled, 
+             geom = "point", 
+             ellipse.type = "convex", 
+             ggtheme = theme_minimal()) +
+  labs(title = "Resultados del Clustering K-medoids en Dimensiones Originales")
+
+# 8. Reducir la dimensionalidad a 3 dimensiones utilizando PCA
+pca_data_kmedoids <- data.frame(pca_result$x[, 1:3], cluster = as.factor(kmedoids_result$clustering))
+
+# 9. Graficar los resultados en 3D utilizando rgl
+plot3d(pca_data_kmedoids$PC1, pca_data_kmedoids$PC2, pca_data_kmedoids$PC3, col = as.numeric(pca_data_kmedoids$cluster), type = "s", size = 1)
+title3d("Clustering K-medoids con PCA", xlab = "Componente Principal 1", ylab = "Componente Principal 2", zlab = "Componente Principal 3")
+
+# 10. Análisis descriptivo de los clusters
+data %>% group_by(cluster_kmedoids) %>%
+  summarise(across(c(G1, G2, G3, Dalc, Walc), mean, na.rm = TRUE))
+
+# 11. Variables más representativas
+# Dim1
+fviz_contrib(pca_result, choice = "var", axes = 1, top = 5)
+# Dim2
+fviz_contrib(pca_result, choice = "var", axes = 2, top = 5)
+```
+
+## Algoritmo CLARA
+```{r}
+# 5. Aplicar CLARA con k = 3
+clara_result <- clara(variables_scaled, k = 3, samples = 10)
+
+# 6. Agregar el resultado al dataset original
+data$cluster_clara <- as.factor(clara_result$clustering)
+
+# 7. Visualización de clusters en las dimensiones originales (ND)
+clara_cluster_data <- list(data = variables_scaled, cluster = clara_result$clustering)
+fviz_cluster(clara_result, data = variables_scaled, 
+             geom = "point", 
+             ellipse.type = "convex", 
+             ggtheme = theme_minimal()) +
+  labs(title = "Resultados del Clustering CLARA en Dimensiones Originales")
+
+# 8. Reducir la dimensionalidad a 3 dimensiones utilizando PCA
+pca_data_clara <- data.frame(pca_result$x[, 1:3], cluster = as.factor(clara_result$clustering))
+
+# 9. Graficar los resultados en 3D utilizando rgl
+plot3d(pca_data_clara$PC1, pca_data_clara$PC2, pca_data_clara$PC3, col = as.numeric(pca_data_clara$cluster), type = "s", size = 1)
+
+title3d("Clustering CLARA con PCA", xlab = "Componente Principal 1", ylab = "Componente Principal 2", zlab = "Componente Principal 3")
+
+# 10. Análisis descriptivo de los clusters
+data %>% group_by(cluster_clara) %>%
+  summarise(across(c(G1, G2, G3, Dalc, Walc), mean, na.rm = TRUE))
+
+# 11. Variables más representativas
+# Dim1
+fviz_contrib(pca_result, choice = "var", axes = 1, top = 5)
+# Dim2
+fviz_contrib(pca_result, choice = "var", axes = 2, top = 5)
+```
+
+## Algoritmo DBSCAN
+```{r}
+# 5. Aplicar DBSCAN
+dbscan_result <- dbscan(variables_scaled, eps = 0.5, minPts = 6)
+
+# 6. Agregar el resultado al dataset original
+data$cluster_dbscan <- as.factor(dbscan_result$cluster)
+
+# 7. Visualización de clusters en las dimensiones originales (ND)
+dbscan_cluster_data <- list(data = variables_scaled, cluster = dbscan_result$cluster)
+fviz_cluster(dbscan_result, data = variables_scaled, 
+             geom = "point", 
+             ellipse.type = "convex", 
+             ggtheme = theme_minimal()) +
+  labs(title = "Resultados del Clustering DBSCAN en Dimensiones Originales")
+
+# 8. Reducir la dimensionalidad a 3 dimensiones utilizando PCA
+pca_data_dbscan <- data.frame(pca_result$x[, 1:3], cluster = as.factor(dbscan_result$cluster))
+
+# 9. Graficar los resultados en 3D utilizando rgl
+
+plot3d(pca_data_dbscan$PC1, pca_data_dbscan$PC2, pca_data_dbscan$PC3, col = as.numeric(pca_data_dbscan$cluster), type = "s", size = 1)
+title3d("Clustering DBSCAN con PCA", xlab = "Componente Principal 1", ylab = "Componente Principal 2", zlab = "Componente Principal 3")
+
+# 10. Análisis descriptivo de los clusters
+data %>% group_by(cluster_dbscan) %>%
+  summarise(across(c(G1, G2, G3, Dalc, Walc), mean, na.rm = TRUE))
+
+# 11. Variables más representativas
+# Dim1
+fviz_contrib(pca_result, choice = "var", axes = 1, top = 5)
+# Dim2
+fviz_contrib(pca_result, choice = "var", axes = 2, top = 5)
+```
+
+## Algoritmo HDBSCAN
+```{r}
+# 5. Aplicar HDBSCAN
+hdbscan_result <- hdbscan(variables_scaled, minPts = 5)
+
+# 6. Agregar el resultado al dataset original
+data$cluster_hdbscan <- as.factor(hdbscan_result$cluster)
+
+# 7. Visualización de clusters en las dimensiones originales (ND)
+hdbscan_cluster_data <- list(data = variables_scaled, cluster = hdbscan_result$cluster)
+
+# 8. Reducir la dimensionalidad a 3 dimensiones utilizando PCA
+pca_data_hdbscan <- data.frame(pca_result$x[, 1:3], cluster = as.factor(hdbscan_result$cluster))
+fviz_cluster(hdbscan_cluster_data, 
+             geom = "point", 
+             ellipse.type = "convex", 
+             ggtheme = theme_minimal()) +
+  labs(title = "Resultados del Clustering HDBSCAN en Dimensiones Originales")
+  
+# 9. Graficar los resultados en 3D utilizando rgl
+plot3d(pca_data_hdbscan$PC1, pca_data_hdbscan$PC2, pca_data_hdbscan$PC3, col = as.numeric(pca_data_hdbscan$cluster), type = "s", size = 1)
+title3d("Clustering HDBSCAN con PCA", xlab = "Componente Principal 1", ylab = "Componente Principal 2", zlab = "Componente Principal 3")
+
+# 10. Análisis descriptivo de los clusters
+data %>% group_by(cluster_hdbscan) %>%
+  summarise(across(c(G1, G2, G3, Dalc, Walc), mean, na.rm = TRUE))
+
+# 11. Variables más representativas
+# Dim1
+fviz_contrib(pca_result, choice = "var", axes = 1, top = 5)
+# Dim2
+fviz_contrib(pca_result, choice = "var", axes = 2, top = 5)
+```
+
+## Comparación de resultados
+```{r}
+
+# Calculamos el rendimiento individual con Silhouette
+silhouette_scores_kmeans <- silhouette(kmeans_result$cluster, dist(variables_scaled))
+silhouette_scores_kmedoids <- silhouette(kmedoids_result$clustering, dist(variables_scaled))
+silhouette_scores_hdbscan <- silhouette(hdbscan_result$cluster, dist(variables_scaled))
+silhouette_scores_dbscan <- silhouette(dbscan_result$cluster, dist(variables_scaled))
+silhouette_scores_clara <- silhouette(clara_result$clustering, dist(variables_scaled))
+
+silhouette_scores_kmeans <- mean(silhouette_scores_kmeans[, 3])
+silhouette_scores_kmedoids <- mean(silhouette_scores_kmedoids[, 3])
+silhouette_scores_hdbscan <- mean(silhouette_scores_hdbscan[, 3])
+silhouette_scores_dbscan <- mean(silhouette_scores_dbscan[, 3])
+silhouette_scores_clara <- mean(silhouette_scores_clara[, 3])
+
+silhouette_scores <- data.frame(
+  Algoritmo = c("K-means", "K-medoids", "HDBSCAN", "DBSCAN", "CLARA"),
+  Silhouette = c(silhouette_scores_kmeans, silhouette_scores_kmedoids, silhouette_scores_hdbscan, silhouette_scores_dbscan, silhouette_scores_clara)
+)
+
+silhouette_scores$Algoritmo <- factor(silhouette_scores$Algoritmo, levels = silhouette_scores$Algoritmo[order(silhouette_scores$Silhouette)])
+
+ggplot(silhouette_scores, aes(x = Algoritmo, y = Silhouette, fill = Algoritmo)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Comparación de Rendimiento de Algoritmos de Clustering", x = "Algoritmo", y = "Promedio del Índice de Silhouette")
+
+
+# Calculamos el rendimiento individual con el índice de Davies-Bouldin
+davies_bouldin_scores_kmeans <- index.DB(variables_scaled, kmeans_result$cluster)$DB
+davies_bouldin_scores_kmedoids <- index.DB(variables_scaled, kmedoids_result$clustering)$DB
+davies_bouldin_scores_hdbscan <- index.DB(variables_scaled, hdbscan_result$cluster)$DB
+davies_bouldin_scores_dbscan <- index.DB(variables_scaled, dbscan_result$cluster)$DB
+davies_bouldin_scores_clara <- index.DB(variables_scaled, clara_result$clustering)$DB
+
+davies_bouldin_scores <- data.frame(
+  Algoritmo = c("K-means", "K-medoids", "HDBSCAN", "DBSCAN", "CLARA"),
+  Davies_Bouldin = c(davies_bouldin_scores_kmeans, davies_bouldin_scores_kmedoids, davies_bouldin_scores_hdbscan, davies_bouldin_scores_dbscan, davies_bouldin_scores_clara)
+)
+
+davies_bouldin_scores$Algoritmo <- factor(davies_bouldin_scores$Algoritmo, levels = davies_bouldin_scores$Algoritmo[order(davies_bouldin_scores$Davies_Bouldin)])
+
+ggplot(davies_bouldin_scores, aes(x = Algoritmo, y = Davies_Bouldin, fill = Algoritmo)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Comparación de Rendimiento de Algoritmos de Clustering", x = "Algoritmo", y = "Índice de Davies-Bouldin")
 ```

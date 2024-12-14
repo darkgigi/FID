@@ -91,9 +91,9 @@ data %>% group_by(cluster) %>%
 
 # 14. Variables más representativas 
 # Dim1
-fviz_contrib(pca_result, choice = "var", axes = 1, top = 3)
+fviz_contrib(pca_result, choice = "var", axes = 1, top = 5)
 # Dim2
-fviz_contrib(pca_result, choice = "var", axes = 2, top = 3)
+fviz_contrib(pca_result, choice = "var", axes = 2, top = 5)
 ```
 
 ## Algoritmo K-medoids
@@ -170,7 +170,7 @@ fviz_contrib(pca_result, choice = "var", axes = 2, top = 5)
 ## Algoritmo DBSCAN
 ```{r}
 # 5. Aplicar DBSCAN
-dbscan_result <- dbscan(variables_scaled, eps = 0.5, minPts = 6)
+dbscan_result <- dbscan(variables_scaled, eps = 0.5, minPts = 5)
 
 # 6. Agregar el resultado al dataset original
 data$cluster_dbscan <- as.factor(dbscan_result$cluster)

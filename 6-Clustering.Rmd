@@ -91,9 +91,9 @@ data %>% group_by(cluster) %>%
 
 # 14. Variables más representativas 
 # Dim1
-fviz_contrib(pca_result, choice = "var", axes = 1, top = 5)
+fviz_contrib(pca_result, choice = "var", axes = 1, top = 3)
 # Dim2
-fviz_contrib(pca_result, choice = "var", axes = 2, top = 5)
+fviz_contrib(pca_result, choice = "var", axes = 2, top = 3)
 ```
 
 ## Algoritmo K-medoids

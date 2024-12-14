@@ -30,7 +30,7 @@ boruta_result <- Boruta(G1 + G2 + G3 + Dalc + Walc ~ ., data = data, doTrace = 2
 print(boruta_result$finalDecision[boruta_result$finalDecision == "Confirmed"])
 plot(boruta_result, main = "Importancia de Variables con Boruta")
 
-relevant_variables <- data %>% select(G1, G2, G3, Dalc, Walc)
+relevant_variables <- subset(df, select = c(G1, G2, G3, Dalc, Walc))
 
 # 3. Convertir variables categóricas a variables numéricas utilizando one-hot encoding
 dummies <- dummyVars(~ ., data = relevant_variables)

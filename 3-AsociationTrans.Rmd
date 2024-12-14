@@ -82,6 +82,16 @@ inspect(head(rules_sorted, 10))
 ```
 
 ```{r}
+# Obtención del atributo más frecuente en las reglas
+rules_items <- lhs(rules_sorted)  # Obtén el lado izquierdo de las reglas
+
+item_freq <- itemFrequency(rules_items)
+
+item_freq_sorted <- sort(item_freq, decreasing = TRUE)
+
+```
+
+```{r}
 # Visualización básica
 plot(rules_sorted)
 
@@ -107,6 +117,16 @@ rules_lift <- subset(rules, lift > 1.2)
 rules_sorted <- sort(rules_lift, by = "confidence", decreasing = TRUE)
 
 inspect(head(rules_sorted, 10))
+
+```
+
+```{r}
+# Obtención del atributo más frecuente en las reglas
+rules_items <- lhs(rules_sorted)  # Obtén el lado izquierdo de las reglas
+
+item_freq <- itemFrequency(rules_items)
+
+item_freq_sorted <- sort(item_freq, decreasing = TRUE)
 
 ```
 

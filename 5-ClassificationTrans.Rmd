@@ -1,3 +1,4 @@
+
 ```{r}
 library(dplyr)
 library(caret)
@@ -45,12 +46,11 @@ glm_dalc <- train(Hdalc ~ ., data = df, method = "glm", trControl = train_contro
 glm_walc <- train(Hwalc ~ ., data = df, method = "glm", trControl = train_control, family = "binomial")
 
 var_glm_dalc <- varImp(glm_dalc)
-var_glm_walc <- varImp(glm_walc)
-
 print(var_glm_dalc)
-print(var_glm_walc)
-
 print(glm_dalc)
+
+var_glm_walc <- varImp(glm_walc)
+print(var_glm_walc)
 print(glm_walc)
 
 # Matriz de confusión

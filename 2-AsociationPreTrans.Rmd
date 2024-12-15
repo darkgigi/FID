@@ -10,6 +10,7 @@ library(arules)
 library(caret)
 library(FSelector)
 library(arulesViz)
+library(dplyr)
 ```
 
 ### Lectura de datos
